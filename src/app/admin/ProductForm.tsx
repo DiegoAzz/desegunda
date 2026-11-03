@@ -2,7 +2,7 @@
 
 import { useState } from 'react';
 import { useRouter } from 'next/navigation';
-import Image from 'next/image';
+import SafeImage from '@/components/SafeImage';
 import Link from 'next/link';
 import { CATEGORIES, ProductType, ProductCondition } from '@/lib/types';
 
@@ -238,7 +238,7 @@ export default function ProductForm({
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2">
             {images.map((img, idx) => (
               <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-300">
-                <img src={img.previewUrl || img.storagePath} alt="" className="w-full h-full object-cover" />
+                <SafeImage src={img.previewUrl || img.storagePath} alt="" fill className="object-cover" />
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(idx)}

@@ -1,5 +1,5 @@
 import Link from 'next/link';
-import Image from 'next/image';
+import SafeImage from './SafeImage';
 import { ProductItem } from '@/lib/types';
 import { formatCop } from '@/lib/format';
 import { ProductStatusBadge, ProductTypeBadge } from './ProductStatusBadge';
@@ -17,14 +17,11 @@ export default function ProductCard({ product }: ProductCardProps) {
     <article className="bg-white rounded-3xl overflow-hidden border border-slate-200 shadow-sm hover:shadow-md transition-shadow flex flex-col">
       {/* Contenedor de Imagen Grande */}
       <Link href={`/p/${product.slug}`} className="relative aspect-[4/3] w-full bg-slate-100 block group overflow-hidden">
-        <Image
+        <SafeImage
           src={mainImage}
           alt={product.title}
           fill
-          unoptimized
-          sizes="(max-width: 640px) 100vw, (max-width: 1024px) 50vw, 33vw"
           className="object-cover group-hover:scale-105 transition-transform duration-300"
-          priority={false}
         />
         
         {/* Badges superiores flotantes */}

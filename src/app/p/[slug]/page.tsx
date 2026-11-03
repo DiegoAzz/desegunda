@@ -1,4 +1,4 @@
-import Image from 'next/image';
+import SafeImage from '@/components/SafeImage';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
@@ -89,14 +89,11 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
       {/* Galería / Fotos grandes */}
       <div className="space-y-3">
         <div className="relative aspect-[4/3] w-full bg-slate-100 rounded-3xl overflow-hidden border border-slate-200 shadow-sm">
-          <Image
+          <SafeImage
             src={product.images?.[0]?.storagePath || '/placeholder.svg'}
             alt={product.images?.[0]?.altText || product.title}
             fill
-            unoptimized
-            sizes="(max-width: 640px) 100vw, 640px"
             className="object-cover"
-            priority
           />
 
           {/* Badges superiores */}
@@ -137,11 +134,10 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
                 key={img.id || idx}
                 className="relative w-20 h-20 rounded-xl overflow-hidden bg-slate-100 border border-slate-200 shrink-0"
               >
-                <Image
+                <SafeImage
                   src={img.storagePath}
                   alt={img.altText || `${product.title} foto ${idx + 1}`}
                   fill
-                  sizes="80px"
                   className="object-cover"
                 />
               </div>

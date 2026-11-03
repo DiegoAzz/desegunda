@@ -1,7 +1,7 @@
 'use client';
 
 import { useState } from 'react';
-import Image from 'next/image';
+import SafeImage from '@/components/SafeImage';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
 import { formatCop } from '@/lib/format';
@@ -107,10 +107,11 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
             {/* Miniatura y Datos Básicos */}
             <div className="flex items-center space-x-3 w-full sm:w-auto">
               <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                <img
+                <SafeImage
                   src={mainImg}
                   alt={item.title}
-                  className="w-full h-full object-cover"
+                  fill
+                  className="object-cover"
                 />
               </div>
 
