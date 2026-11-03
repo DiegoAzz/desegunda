@@ -29,13 +29,16 @@ export default function WompiPayButton({ product, className = '' }: WompiPayButt
       const res = await fetch('/api/wompi/checkout', {
         method: 'POST',
         headers: { 'Content-Type': 'application/json' },
-        body: JSON.stringify({ productId: product.id }),
+        body: JSON.stringify({
+          productId: product.id,
+          slug: product.slug,
+        }),
       });
 
       const data = await res.json();
 
       if (res.ok && data.success && data.checkoutUrl) {
-        // Redirigir a la pasarela oficial de Wompi
+        // Redirigir a la pasarela oficial segura de Wompi
         window.location.href = data.checkoutUrl;
       } else {
         setError(data.error || 'No se pudo generar la pasarela de pago');
@@ -50,8 +53,9 @@ export default function WompiPayButton({ product, className = '' }: WompiPayButt
   return (
     <div className={`space-y-2 ${className}`}>
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-2.5 rounded-xl font-bold">
-          ⚠️ {error}
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-xs p-3 rounded-xl font-bold flex items-center space-x-2">
+          <span>⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
