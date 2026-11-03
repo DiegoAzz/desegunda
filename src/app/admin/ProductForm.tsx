@@ -29,8 +29,8 @@ export default function ProductForm({
   const [stock, setStock] = useState(initialData?.stock !== undefined ? initialData.stock.toString() : '1');
   const [acceptsOffers, setAcceptsOffers] = useState(initialData?.acceptsOffers ?? false);
   const [deliveryArea, setDeliveryArea] = useState(initialData?.deliveryArea || defaultDeliveryArea);
-  const [images, setImages] = useState<Array<{ storagePath: string; altText?: string }>>(
-    initialData?.images?.map((img: any) => ({ storagePath: img.storagePath, altText: img.altText })) || []
+  const [images, setImages] = useState<Array<{ storagePath: string; altText?: string; previewUrl?: string }>>(
+    initialData?.images?.map((img: any) => ({ storagePath: img.storagePath, altText: img.altText, previewUrl: img.storagePath })) || []
   );
 
   const [uploading, setUploading] = useState(false);
@@ -50,6 +50,7 @@ export default function ProductForm({
 
     try {
       for (const file of Array.from(e.target.files)) {
+        const localBlobUrl = URL.createObjectURL(file);
         const formData = new FormData();
         formData.append('file', file);
 
@@ -60,7 +61,14 @@ export default function ProductForm({
 
         const data = await res.json();
         if (res.ok && data.success) {
-          setImages((prev) => [...prev, { storagePath: data.url, altText: title || 'Foto de producto' }]);
+          setImages((prev) => [
+            ...prev,
+            {
+              storagePath: data.url,
+              previewUrl: localBlobUrl,
+              altText: title || 'Foto de producto',
+            },
+          ]);
         } else {
           setError(data.error || 'Error subiendo la foto');
         }
@@ -122,7 +130,10 @@ export default function ProductForm({
       acceptsOffers: type === 'GIFT' ? false : acceptsOffers,
       deliveryArea: deliveryArea.trim(),
       status: parsedStock === 0 && targetStatus === 'AVAILABLE' ? 'SOLD' : targetStatus,
-      images,
+      images: images.map((img) => ({
+        storagePath: img.storagePath,
+        altText: img.altText || title.trim(),
+      })),
     };
 
     try {
@@ -227,7 +238,7 @@ export default function ProductForm({
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2">
             {images.map((img, idx) => (
               <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-300">
-                <img src={img.storagePath} alt="" className="w-full h-full object-cover" />
+                <img src={img.previewUrl || img.storagePath} alt="" className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(idx)}

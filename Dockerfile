@@ -29,14 +29,14 @@ ENV PORT=3000
 ENV HOSTNAME="0.0.0.0"
 ENV UPLOAD_DIR="/app/uploads"
 
-RUN apk add --no-cache openssl
+RUN apk add --no-cache openssl su-exec
 
 # Crear usuario seguro sin privilegios root
 RUN addgroup --system --gid 1001 nodejs
 RUN adduser --system --uid 1001 nextjs
 
 # Crear directorio de subidas persistente
-RUN mkdir -p /app/uploads && chown -R nextjs:nodejs /app/uploads
+RUN mkdir -p /app/uploads /app/public/uploads && chown -R nextjs:nodejs /app/uploads /app/public/uploads && chmod -R 777 /app/uploads /app/public/uploads
 
 # Copiar archivos estáticos y standalone
 COPY --from=builder /app/public ./public
@@ -50,9 +50,7 @@ COPY --from=builder /app/node_modules/prisma ./node_modules/prisma
 
 # Copiar script de arranque
 COPY entrypoint.sh ./entrypoint.sh
-RUN chmod +x ./entrypoint.sh && chown nextjs:nodejs ./entrypoint.sh
-
-USER nextjs
+RUN chmod +x ./entrypoint.sh
 
 EXPOSE 3000
 

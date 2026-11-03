@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import sharp from 'sharp';
 import path from 'path';
 import fs from 'fs';
+import os from 'os';
 import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
@@ -49,22 +50,42 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Configurar directorio persistente
-    const uploadBaseDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'public', 'uploads');
-    if (!fs.existsSync(uploadBaseDir)) {
-      fs.mkdirSync(uploadBaseDir, { recursive: true });
-    }
-
     // Generar nombre seguro y aleatorio con extensión .webp para optimización máxima
     const randomName = `${crypto.randomBytes(16).toString('hex')}.webp`;
-    const targetPath = path.join(uploadBaseDir, randomName);
 
-    // Comprimir y redimensionar con Sharp (máximo 1600px de ancho para celular y alta calidad)
-    await sharp(buffer)
+    // Procesar y comprimir imagen con Sharp
+    const processedBuffer = await sharp(buffer)
       .rotate() // Respeta orientación EXIF de celulares
       .resize({ width: 1600, height: 1600, fit: 'inside', withoutEnlargement: true })
       .webp({ quality: 82, effort: 4 })
-      .toFile(targetPath);
+      .toBuffer();
+
+    // Directorios donde intentar guardar (para máxima resiliencia en Docker/Coolify)
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    let saveCount = 0;
+    for (const dir of candidateDirs) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true, mode: 0o777 });
+        }
+        const targetPath = path.join(dir, randomName);
+        fs.writeFileSync(targetPath, processedBuffer);
+        saveCount++;
+      } catch (writeErr) {
+        console.warn(`[upload] No se pudo escribir en ${dir}:`, writeErr);
+      }
+    }
+
+    if (saveCount === 0) {
+      throw new Error('No se pudo guardar la imagen en ningún directorio del sistema de archivos');
+    }
 
     // Ruta pública para servir la imagen
     const publicUrl = `/api/uploads/${randomName}`;
