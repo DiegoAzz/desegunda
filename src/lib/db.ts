@@ -3,6 +3,7 @@ import { INITIAL_PRODUCTS, INITIAL_STORE_SETTINGS } from './initial-data';
 import { ProductItem, ProductType, StoreSettingsItem } from './types';
 import fs from 'fs';
 import path from 'path';
+import os from 'os';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -19,14 +20,25 @@ if (process.env.NODE_ENV !== 'production') {
   global.prisma = prisma;
 }
 
-function loadLocalCustomProducts(): ProductItem[] {
+export function loadLocalCustomProducts(): ProductItem[] {
   try {
-    const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'public', 'uploads');
-    const filePath = path.join(uploadDir, 'custom_products.json');
-    if (fs.existsSync(filePath)) {
-      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-      if (Array.isArray(data)) {
-        return data;
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      const filePath = path.join(dir, 'custom_products.json');
+      if (fs.existsSync(filePath)) {
+        try {
+          const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (Array.isArray(data) && data.length > 0) {
+            return data;
+          }
+        } catch {}
       }
     }
   } catch {

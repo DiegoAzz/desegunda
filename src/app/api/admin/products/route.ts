@@ -6,25 +6,40 @@ import { ProductType, ProductCondition, ProductStatus } from '@/lib/types';
 import fs from 'fs';
 import path from 'path';
 
+import os from 'os';
+
 export const dynamic = 'force-dynamic';
 
 function saveProductToLocalFile(product: any) {
   try {
-    const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'public', 'uploads');
-    if (!fs.existsSync(uploadDir)) {
-      fs.mkdirSync(uploadDir, { recursive: true });
-    }
-    const filePath = path.join(uploadDir, 'custom_products.json');
-    let existing: any[] = [];
-    if (fs.existsSync(filePath)) {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
       try {
-        existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-      } catch {
-        existing = [];
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        const filePath = path.join(dir, 'custom_products.json');
+        let existing: any[] = [];
+        if (fs.existsSync(filePath)) {
+          try {
+            existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          } catch {
+            existing = [];
+          }
+        }
+        existing = [product, ...existing.filter((p) => p.id !== product.id && p.slug !== product.slug)];
+        fs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf-8');
+      } catch (dirErr) {
+        // Continuar con el siguiente directorio
       }
     }
-    existing = [product, ...existing.filter((p) => p.id !== product.id && p.slug !== product.slug)];
-    fs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf-8');
   } catch (err) {
     console.error('Error guardando en archivo local:', err);
   }

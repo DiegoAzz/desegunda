@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma } from '@/lib/db';
+import { prisma, getProductBySlug, loadLocalCustomProducts } from '@/lib/db';
 import { INITIAL_PRODUCTS } from '@/lib/initial-data';
 import { createWompiReference, generateWompiSignature } from '@/lib/wompi';
 
@@ -8,30 +8,62 @@ export const dynamic = 'force-dynamic';
 export async function POST(req: NextRequest) {
   try {
     const body = await req.json();
-    const productId = body.productId || body.id || body.slug;
+    const slugToFind = (body.slug || '').trim();
+    const idToFind = (body.productId || body.id || '').trim();
 
-    if (!productId) {
+    if (!slugToFind && !idToFind) {
       return NextResponse.json(
         { success: false, error: 'Identificador del producto requerido' },
         { status: 400 }
       );
     }
 
-    // Buscar en PostgreSQL con manejo seguro de errores
     let product: any = null;
-    try {
-      product = await prisma.product.findFirst({
-        where: {
-          OR: [{ id: productId }, { slug: productId }],
-        },
-      });
-    } catch (dbError) {
-      console.warn('Base de datos no disponible en checkout, usando catálogo local:', dbError);
+
+    // 1. Usar getProductBySlug (es exactamente la misma función que renderizó la página)
+    if (slugToFind) {
+      try {
+        product = await getProductBySlug(slugToFind);
+      } catch (err) {
+        console.warn('Aviso buscando slug en getProductBySlug:', err);
+      }
     }
 
-    // Fallback a productos locales
+    // 2. Si no se encontró por slug, buscar en base de datos PostgreSQL por ID o slug
+    if (!product && (idToFind || slugToFind)) {
+      try {
+        const queryTarget = idToFind || slugToFind;
+        product = await prisma.product.findFirst({
+          where: {
+            OR: [{ id: queryTarget }, { slug: queryTarget }],
+          },
+        });
+      } catch (dbError) {
+        console.warn('Base de datos no disponible en checkout:', dbError);
+      }
+    }
+
+    // 3. Fallback a catálogo local personalizado (custom_products.json)
     if (!product) {
-      product = INITIAL_PRODUCTS.find((p) => p.id === productId || p.slug === productId) || null;
+      const localCustom = loadLocalCustomProducts();
+      product =
+        localCustom.find(
+          (p) =>
+            (slugToFind && p.slug === slugToFind) ||
+            (idToFind && p.id === idToFind) ||
+            (idToFind && p.slug === idToFind)
+        ) || null;
+    }
+
+    // 4. Fallback a productos semilla iniciales
+    if (!product) {
+      product =
+        INITIAL_PRODUCTS.find(
+          (p) =>
+            (slugToFind && p.slug === slugToFind) ||
+            (idToFind && p.id === idToFind) ||
+            (idToFind && p.slug === idToFind)
+        ) || null;
     }
 
     if (!product) {
