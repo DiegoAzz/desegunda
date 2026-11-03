@@ -102,9 +102,9 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Llave pública EXACTA de producción verificada en el panel de Wompi del comercio
+    // Llave pública EXACTA de producción verificada en la API de Wompi (Comercio: APPZPLAY)
     const publicKey = (
-      process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || 'pub_prod_GY4Z4CsYWPa41Ax4D3BEq14Y5Q31QUam'
+      process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || 'pub_prod_GY4Z4CsYWPa41Ax4D3BEq14Y5Q3lQUam'
     ).trim();
 
     const integritySecret = (
