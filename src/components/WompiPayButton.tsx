@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { ProductItem } from '@/lib/types';
 
 interface WompiPayButtonProps {
@@ -12,7 +12,17 @@ export default function WompiPayButton({ product, className = '' }: WompiPayButt
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState('');
 
-  // Regla estricta: los regalos NUNCA muestran botón de pago y ventas sin stock o no disponibles tampoco
+  // Cargar el script oficial de Wompi Widget en el cliente
+  useEffect(() => {
+    if (typeof window !== 'undefined' && !(window as any).WidgetCheckout) {
+      const script = document.createElement('script');
+      script.src = 'https://checkout.wompi.co/widget.js';
+      script.async = true;
+      document.body.appendChild(script);
+    }
+  }, []);
+
+  // Regla estricta: los regalos NUNCA muestran botón de pago y ventas sin stock tampoco
   if (
     product.type === 'GIFT' ||
     product.status !== 'AVAILABLE' ||
@@ -37,12 +47,57 @@ export default function WompiPayButton({ product, className = '' }: WompiPayButt
 
       const data = await res.json();
 
-      if (res.ok && data.success && data.checkoutUrl) {
-        // Redirigir a la pasarela oficial segura de Wompi
-        window.location.href = data.checkoutUrl;
-      } else {
+      if (!res.ok || !data.success) {
         setError(data.error || 'No se pudo generar la pasarela de pago');
         setLoading(false);
+        return;
+      }
+
+      // Si el widget oficial de Wompi está cargado, abrir el modal nativo
+      if (typeof window !== 'undefined' && (window as any).WidgetCheckout) {
+        const checkout = new (window as any).WidgetCheckout({
+          currency: 'COP',
+          amountInCents: data.amountInCents,
+          reference: data.reference,
+          publicKey: data.publicKey,
+          signature: {
+            integrity: data.signature,
+          },
+          redirectUrl: data.redirectUrl,
+        });
+
+        checkout.open((result: any) => {
+          const transaction = result?.transaction;
+          if (transaction?.status === 'APPROVED') {
+            window.location.href = `${data.redirectUrl}&wompi_status=APPROVED`;
+          }
+          setLoading(false);
+        });
+      } else {
+        // Fallback: Redirección mediante formulario estándar de Wompi Web Checkout
+        const form = document.createElement('form');
+        form.method = 'GET';
+        form.action = 'https://checkout.wompi.co/p/';
+
+        const fields: Record<string, string> = {
+          'public-key': data.publicKey,
+          currency: 'COP',
+          'amount-in-cents': data.amountInCents.toString(),
+          reference: data.reference,
+          'signature:integrity': data.signature,
+          'redirect-url': data.redirectUrl,
+        };
+
+        for (const [key, value] of Object.entries(fields)) {
+          const input = document.createElement('input');
+          input.type = 'hidden';
+          input.name = key;
+          input.value = value;
+          form.appendChild(input);
+        }
+
+        document.body.appendChild(form);
+        form.submit();
       }
     } catch {
       setError('Error de conexión con el servicio de pagos');
@@ -67,7 +122,7 @@ export default function WompiPayButton({ product, className = '' }: WompiPayButt
       >
         <div className="flex items-center space-x-2">
           <span className="text-xl">💳</span>
-          <span>{loading ? 'CONECTANDO CON WOMPI...' : 'PAGAR CON WOMPI'}</span>
+          <span>{loading ? 'ABRIENDO PASARELA WOMPI...' : 'PAGAR CON WOMPI'}</span>
         </div>
         <span className="text-[11px] font-semibold text-blue-200 uppercase tracking-wider mt-0.5">
           PSE • Nequi • Bancolombia • Tarjetas
@@ -75,7 +130,7 @@ export default function WompiPayButton({ product, className = '' }: WompiPayButt
       </button>
 
       <p className="text-[11px] text-center text-slate-400">
-        Pago seguro procesado por Wompi Bancolombia
+        Pago seguro en línea procesado por Wompi Bancolombia
       </p>
     </div>
   );

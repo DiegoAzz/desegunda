@@ -11,10 +11,10 @@ export default function Footer() {
         <p className="text-sm">
           Tienda personal. Todos los artículos son de mi propiedad personal.
           <br />
-          Contacto directo y acuerdos únicamente a través de WhatsApp.
+          Contacto directo por WhatsApp o pago seguro en línea con Wompi Bancolombia.
         </p>
         <p className="text-xs text-slate-400">
-          Sin registros para compradores • Sin pasarelas ni cobros automáticos • 100 % transparente
+          Sin registros para compradores • Pagos seguros con Wompi (PSE, Nequi, Bancolombia, Tarjetas) • 100 % transparente
         </p>
         <div className="pt-2">
           <Link href="/admin" className="text-xs text-slate-400 hover:text-slate-600 underline">
