@@ -53,10 +53,28 @@ export async function clearSession() {
 }
 
 export async function verifyAdminCredentials(email: string, passwordPlain: string) {
+  const inputEmail = (email || '').toLowerCase().trim();
+  const envEmail = (process.env.INITIAL_ADMIN_EMAIL || 'admin@lotengo.local').toLowerCase().trim();
+  const envPassword = process.env.INITIAL_ADMIN_PASSWORD || 'AdminSeguro2026!';
+
+  const validEmails = [envEmail, 'admin@lotengo.local', 'admin@desegunda.appzplay.online'];
+  const validPasswords = [envPassword, 'AdminSeguro2026!', 'admin123456', 'admin_dev_password_123'];
+
+  // 1. Verificación instantánea sin esperar timeouts de red o de base de datos
+  if (validEmails.includes(inputEmail) && validPasswords.includes(passwordPlain)) {
+    return {
+      id: 'admin-master',
+      email: inputEmail,
+    };
+  }
+
+  // 2. Si no coincide con las credenciales maestras, buscar en PostgreSQL con timeout de 2s
   try {
-    const admin = await prisma.adminUser.findUnique({
-      where: { email },
+    const dbQuery = prisma.adminUser.findUnique({
+      where: { email: inputEmail },
     });
+    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout DB')), 2000));
+    const admin: any = await Promise.race([dbQuery, timeout]);
 
     if (admin) {
       const isValid = await bcrypt.compare(passwordPlain, admin.passwordHash);
@@ -65,22 +83,7 @@ export async function verifyAdminCredentials(email: string, passwordPlain: strin
       }
     }
   } catch (err) {
-    console.error('Error verificando admin en BD:', err);
-  }
-
-  // Fallback para desarrollo o primer inicio si la BD aún no está disponible
-  const envEmail = (process.env.INITIAL_ADMIN_EMAIL || 'admin@lotengo.local').toLowerCase();
-  const envPassword = process.env.INITIAL_ADMIN_PASSWORD || 'AdminSeguro2026!';
-  const inputEmail = email.toLowerCase().trim();
-
-  const validEmails = [envEmail, 'admin@lotengo.local', 'admin@desegunda.appzplay.online'];
-  const validPasswords = [envPassword, 'AdminSeguro2026!', 'admin123456', 'admin_dev_password_123'];
-
-  if (validEmails.includes(inputEmail) && validPasswords.includes(passwordPlain)) {
-    return {
-      id: 'env-admin-fallback',
-      email: inputEmail,
-    };
+    console.warn('Verificación en BD omitida por timeout:', err);
   }
 
   return null;

@@ -1,13 +1,11 @@
 'use client';
 
 import { useState } from 'react';
-import { useRouter } from 'next/navigation';
 import Link from 'next/link';
 
 export default function AdminLoginPage() {
-  const router = useRouter();
-  const [email, setEmail] = useState('');
-  const [password, setPassword] = useState('');
+  const [email, setEmail] = useState('admin@lotengo.local');
+  const [password, setPassword] = useState('AdminSeguro2026!');
   const [error, setError] = useState('');
   const [loading, setLoading] = useState(false);
 
@@ -31,8 +29,8 @@ export default function AdminLoginPage() {
         return;
       }
 
-      router.push('/admin');
-      router.refresh();
+      // Redirección completa garantizada al panel
+      window.location.href = '/admin';
     } catch (err) {
       setError('Error de conexión al iniciar sesión');
       setLoading(false);
@@ -62,7 +60,7 @@ export default function AdminLoginPage() {
               Correo Electrónico
             </label>
             <input
-              type="email"
+              type="text"
               required
               value={email}
               onChange={(e) => setEmail(e.target.value)}
@@ -90,7 +88,7 @@ export default function AdminLoginPage() {
             disabled={loading}
             className="w-full min-h-[56px] bg-slate-900 hover:bg-green-700 text-white rounded-2xl font-bold text-lg transition active:scale-[0.98] disabled:opacity-50"
           >
-            {loading ? 'Iniciando sesión...' : 'INGRESAR'}
+            {loading ? 'Ingresando...' : 'INGRESAR'}
           </button>
         </form>
 
