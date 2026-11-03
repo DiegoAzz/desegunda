@@ -1,0 +1,121 @@
+import { NextRequest, NextResponse } from 'next/server';
+import { getSession } from '@/lib/auth';
+import { prisma } from '@/lib/db';
+import { slugify } from '@/lib/format';
+import { ProductType, ProductCondition, ProductStatus } from '@/lib/types';
+
+export const dynamic = 'force-dynamic';
+
+export async function POST(req: NextRequest) {
+  try {
+    const session = await getSession();
+    if (!session) {
+      return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
+    }
+
+    const data = await req.json();
+    const {
+      title,
+      description,
+      type,
+      category,
+      condition,
+      damageDetails,
+      priceCop,
+      acceptsOffers,
+      status = 'AVAILABLE',
+      deliveryArea,
+      images = [],
+    } = data;
+
+    // Validaciones estrictas según PRD
+    if (!title || title.trim().length === 0) {
+      return NextResponse.json({ success: false, error: 'El nombre es obligatorio' }, { status: 400 });
+    }
+    if (title.length > 90) {
+      return NextResponse.json({ success: false, error: 'El nombre no puede exceder 90 caracteres' }, { status: 400 });
+    }
+    if (!['NEW', 'USED', 'GIFT'].includes(type)) {
+      return NextResponse.json({ success: false, error: 'Tipo inválido' }, { status: 400 });
+    }
+
+    // Regla 2 y 3: Venta requiere precio > 0; Regalo no admite precio
+    let finalPriceCop: number | null = null;
+    let finalAcceptsOffers = false;
+
+    if (type === 'GIFT') {
+      finalPriceCop = null;
+      finalAcceptsOffers = false;
+    } else {
+      const parsedPrice = parseInt(priceCop, 10);
+      if (isNaN(parsedPrice) || parsedPrice <= 0) {
+        return NextResponse.json(
+          { success: false, error: 'Para publicar una venta se requiere un precio mayor que cero' },
+          { status: 400 }
+        );
+      }
+      finalPriceCop = parsedPrice;
+      finalAcceptsOffers = Boolean(acceptsOffers);
+    }
+
+    // Regla 4: Usados exigen condición; si está dañado, exige detalle de la falla
+    let finalCondition: ProductCondition | null = null;
+    let finalDamageDetails: string | null = null;
+
+    if (type === 'USED') {
+      if (!['GOOD', 'DETAILS', 'DAMAGED'].includes(condition)) {
+        return NextResponse.json(
+          { success: false, error: 'En artículos usados debes elegir si funciona bien, tiene detalles o está dañado' },
+          { status: 400 }
+        );
+      }
+      finalCondition = condition as ProductCondition;
+
+      if (finalCondition === 'DAMAGED') {
+        if (!damageDetails || damageDetails.trim().length < 5) {
+          return NextResponse.json(
+            { success: false, error: 'Para artículos dañados es obligatorio detallar claramente la falla' },
+            { status: 400 }
+          );
+        }
+        finalDamageDetails = damageDetails.trim();
+      }
+    }
+
+    const uniqueSlug = slugify(title);
+
+    const createdProduct = await prisma.product.create({
+      data: {
+        slug: uniqueSlug,
+        title: title.trim(),
+        description: (description || '').trim(),
+        type: type as ProductType,
+        category: category || 'Otros',
+        condition: finalCondition,
+        damageDetails: finalDamageDetails,
+        priceCop: finalPriceCop,
+        acceptsOffers: finalAcceptsOffers,
+        status: (status as ProductStatus) || 'AVAILABLE',
+        deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+        images: {
+          create: images.map((img: { storagePath: string; altText?: string }, index: number) => ({
+            storagePath: img.storagePath,
+            sortOrder: index,
+            altText: img.altText || title,
+          })),
+        },
+      },
+      include: {
+        images: true,
+      },
+    });
+
+    return NextResponse.json({ success: true, product: createdProduct });
+  } catch (error) {
+    console.error('Error creando producto:', error);
+    return NextResponse.json(
+      { success: false, error: 'Error al crear el producto' },
+      { status: 500 }
+    );
+  }
+}

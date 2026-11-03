@@ -1,0 +1,46 @@
+version: '3.8'
+
+services:
+  postgres:
+    image: postgres:16-alpine
+    container_name: lotengo_postgres
+    restart: always
+    environment:
+      POSTGRES_DB: lotengo
+      POSTGRES_USER: lotengo
+      POSTGRES_PASSWORD: ${DB_PASSWORD:-lotengo_secret_pass_coolify_2026}
+    volumes:
+      - postgres_data:/var/lib/postgresql/data
+    healthcheck:
+      test: ["CMD-SHELL", "pg_isready -U lotengo"]
+      interval: 5s
+      timeout: 5s
+      retries: 5
+
+  app:
+    build:
+      context: .
+      dockerfile: Dockerfile
+    container_name: lotengo_app
+    restart: always
+    depends_on:
+      postgres:
+        condition: service_healthy
+    environment:
+      DATABASE_URL: postgresql://lotengo:${DB_PASSWORD:-lotengo_secret_pass_coolify_2026}@postgres:5432/lotengo?schema=public
+      AUTH_SECRET: ${AUTH_SECRET:-lotengo_jwt_super_secret_key_coolify_32chars}
+      UPLOAD_DIR: /app/uploads
+      NEXT_PUBLIC_SITE_URL: ${NEXT_PUBLIC_SITE_URL:-https://desegunda.appzplay.online}
+      INITIAL_ADMIN_EMAIL: ${INITIAL_ADMIN_EMAIL:-admin@desegunda.appzplay.online}
+      INITIAL_ADMIN_PASSWORD: ${INITIAL_ADMIN_PASSWORD:-AdminSeguro2026!}
+      PORT: 3000
+    ports:
+      - "3000:3000"
+    volumes:
+      - uploads_data:/app/uploads
+
+volumes:
+  postgres_data:
+    driver: local
+  uploads_data:
+    driver: local
