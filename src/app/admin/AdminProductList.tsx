@@ -91,6 +91,7 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
         const isSold = item.status === 'SOLD';
         const isGiven = item.status === 'GIVEN_AWAY';
         const isHidden = item.status === 'HIDDEN';
+        const stockCount = item.stock ?? (isSold || isGiven ? 0 : 1);
         const mainImg = item.images?.[0]?.storagePath || '/placeholder.svg';
         const isLoading = loadingId === item.id;
 
@@ -98,7 +99,9 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
           <div
             key={item.id}
             className={`bg-white rounded-2xl border p-4 shadow-xs transition flex flex-col sm:flex-row gap-4 items-start sm:items-center justify-between ${
-              isHidden ? 'opacity-60 border-dashed border-slate-300' : 'border-slate-200'
+              isHidden || isSold
+                ? 'opacity-70 border-dashed border-slate-300'
+                : 'border-slate-200'
             }`}
           >
             {/* Miniatura y Datos Básicos */}
@@ -117,6 +120,16 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
                 <div className="flex flex-wrap items-center gap-1.5 mb-1">
                   <ProductTypeBadge type={item.type} condition={item.condition} />
                   <ProductStatusBadge status={item.status} />
+                  {/* Etiqueta de inventario en admin */}
+                  <span
+                    className={`text-[11px] font-bold px-2 py-0.5 rounded-full border ${
+                      stockCount > 0
+                        ? 'bg-slate-100 text-slate-700 border-slate-300'
+                        : 'bg-rose-100 text-rose-800 border-rose-300'
+                    }`}
+                  >
+                    Stock: {stockCount}
+                  </span>
                   {isHidden && (
                     <span className="text-xs font-bold bg-slate-200 text-slate-700 px-2 py-0.5 rounded-full">
                       OCULTO
@@ -138,7 +151,7 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
               </div>
             </div>
 
-            {/* Acciones Exactas del PRD: EDITAR, RESERVAR, MARCAR VENDIDO, MARCAR ENTREGADO, OCULTAR, ELIMINAR */}
+            {/* Acciones del Administrador */}
             <div className="flex flex-wrap items-center gap-2 w-full sm:w-auto justify-end pt-2 sm:pt-0 border-t sm:border-t-0 border-slate-100">
               <Link
                 href={`/admin/editar/${item.id}`}

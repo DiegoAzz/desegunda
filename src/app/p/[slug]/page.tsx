@@ -7,12 +7,17 @@ import { formatCop, getShortCode } from '@/lib/format';
 import { ProductStatusBadge, ProductTypeBadge } from '@/components/ProductStatusBadge';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import ShareButton from '@/components/ShareButton';
+import WompiPayButton from '@/components/WompiPayButton';
 
 export const dynamic = 'force-dynamic';
 
 interface ProductDetailPageProps {
   params: {
     slug: string;
+  };
+  searchParams?: {
+    wompi_ref?: string;
+    id?: string;
   };
 }
 
@@ -36,7 +41,7 @@ export async function generateMetadata({ params }: ProductDetailPageProps): Prom
   };
 }
 
-export default async function ProductDetailPage({ params }: ProductDetailPageProps) {
+export default async function ProductDetailPage({ params, searchParams }: ProductDetailPageProps) {
   const [product, settings] = await Promise.all([
     getProductBySlug(params.slug),
     getStoreSettings(),
@@ -50,6 +55,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
   const isAvailable = product.status === 'AVAILABLE';
   const shortCode = getShortCode(product.slug || product.id);
   const deliveryLocation = product.deliveryArea || settings.defaultDeliveryArea;
+  const isReturningFromWompi = Boolean(searchParams?.wompi_ref || searchParams?.id);
 
   return (
     <article className="space-y-6 pb-8">
@@ -66,6 +72,19 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           CÓDIGO: {shortCode}
         </span>
       </div>
+
+      {/* Banner de retorno de Wompi */}
+      {isReturningFromWompi && (
+        <div className="bg-emerald-50 border-2 border-emerald-400 rounded-2xl p-4 text-emerald-950 space-y-1 shadow-sm">
+          <div className="flex items-center space-x-2 font-black text-base text-emerald-800">
+            <span>🎉</span>
+            <span>¡Transacción de Wompi Registrada!</span>
+          </div>
+          <p className="text-xs sm:text-sm text-emerald-900">
+            Tu solicitud de pago ha sido procesada por Wompi Bancolombia. Escríbeme a WhatsApp para coordinar la entrega inmediata de tu artículo.
+          </p>
+        </div>
+      )}
 
       {/* Galería / Fotos grandes */}
       <div className="space-y-3">
@@ -102,7 +121,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
                   {product.status === 'GIVEN_AWAY' && 'Regalo Entregado'}
                 </p>
                 <p className="text-xs text-slate-500 mt-1">
-                  Este artículo ya no está disponible para contactar.
+                  Este artículo ya no está disponible para contactar ni comprar.
                 </p>
               </div>
             </div>
@@ -178,7 +197,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
               <strong>Falla indicada con total claridad:</strong> {product.damageDetails}
             </p>
             <p className="text-xs text-rose-700 italic">
-              Por favor revisa cuidadosamente esta descripción antes de escribir por WhatsApp.
+              Por favor revisa cuidadosamente esta descripción antes de escribir por WhatsApp o pagar.
             </p>
           </div>
         )}
@@ -202,9 +221,16 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           </p>
         </div>
 
-        {/* ACCIONES PRINCIPALES POR WHATSAPP (Mínimo 56px de alto, textos exactos) */}
-        <div className="pt-4 border-t border-slate-100 space-y-3">
-          {/* Botón principal de contacto */}
+        {/* ACCIONES PRINCIPALES: WHATSAPP Y WOMPI */}
+        <div className="pt-4 border-t border-slate-100 space-y-4">
+          {/* Si es artículo en venta y está disponible, mostrar botón directo de Wompi */}
+          {!isGift && isAvailable && (
+            <div className="pb-2 border-b border-slate-100">
+              <WompiPayButton product={product} />
+            </div>
+          )}
+
+          {/* Botón principal de WhatsApp */}
           <WhatsAppButton
             product={product}
             action={isGift ? 'gift' : 'interest'}
@@ -228,9 +254,7 @@ export default async function ProductDetailPage({ params }: ProductDetailPagePro
           />
 
           <p className="text-xs text-center text-slate-400 pt-2">
-            Al pulsar, se abrirá WhatsApp con el mensaje prellenado del producto.
-            <br />
-            No necesitas registrarte ni pagar nada en esta web.
+            Puedes pagar directamente por Wompi o escribirme a WhatsApp para coordinar la entrega.
           </p>
         </div>
       </div>

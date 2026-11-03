@@ -49,6 +49,7 @@ export async function PUT(
       condition,
       damageDetails,
       priceCop,
+      stock = 1,
       acceptsOffers,
       status,
       deliveryArea,
@@ -93,6 +94,12 @@ export async function PUT(
       }
     }
 
+    const parsedStock = Math.max(0, parseInt(stock, 10) ?? 1);
+    let finalStatus: ProductStatus = (status as ProductStatus) || 'AVAILABLE';
+    if (parsedStock === 0 && finalStatus === 'AVAILABLE') {
+      finalStatus = 'SOLD';
+    }
+
     // Actualizar producto e imágenes
     await prisma.$transaction(async (tx) => {
       await tx.product.update({
@@ -105,8 +112,9 @@ export async function PUT(
           condition: finalCondition,
           damageDetails: finalDamageDetails,
           priceCop: finalPriceCop,
+          stock: parsedStock,
           acceptsOffers: finalAcceptsOffers,
-          status: (status as ProductStatus) || 'AVAILABLE',
+          status: finalStatus,
           deliveryArea: deliveryArea ? deliveryArea.trim() : null,
         },
       });

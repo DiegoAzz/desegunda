@@ -18,6 +18,7 @@ CREATE TABLE "Product" (
     "condition" "ProductCondition",
     "damageDetails" TEXT,
     "priceCop" INTEGER,
+    "stock" INTEGER NOT NULL DEFAULT 1,
     "acceptsOffers" BOOLEAN NOT NULL DEFAULT false,
     "status" "ProductStatus" NOT NULL DEFAULT 'AVAILABLE',
     "deliveryArea" TEXT,

@@ -26,6 +26,7 @@ export default function ProductForm({
   const [condition, setCondition] = useState<ProductCondition>(initialData?.condition || 'GOOD');
   const [damageDetails, setDamageDetails] = useState(initialData?.damageDetails || '');
   const [priceCop, setPriceCop] = useState(initialData?.priceCop?.toString() || '');
+  const [stock, setStock] = useState(initialData?.stock !== undefined ? initialData.stock.toString() : '1');
   const [acceptsOffers, setAcceptsOffers] = useState(initialData?.acceptsOffers ?? false);
   const [deliveryArea, setDeliveryArea] = useState(initialData?.deliveryArea || defaultDeliveryArea);
   const [images, setImages] = useState<Array<{ storagePath: string; altText?: string }>>(
@@ -36,7 +37,6 @@ export default function ProductForm({
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
 
-  // Subida de foto a /api/admin/upload con compresión Sharp
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
@@ -80,7 +80,6 @@ export default function ProductForm({
   const handleSubmit = async (targetStatus: 'AVAILABLE' | 'DRAFT') => {
     setError('');
 
-    // Validaciones
     if (!title.trim()) {
       setError('El nombre del producto es obligatorio');
       return;
@@ -103,6 +102,12 @@ export default function ProductForm({
       return;
     }
 
+    const parsedStock = parseInt(stock, 10);
+    if (isNaN(parsedStock) || parsedStock < 0) {
+      setError('El inventario debe ser 0 o un número positivo');
+      return;
+    }
+
     setSubmitting(true);
 
     const payload = {
@@ -113,9 +118,10 @@ export default function ProductForm({
       condition: type === 'USED' ? condition : null,
       damageDetails: type === 'USED' && condition === 'DAMAGED' ? damageDetails.trim() : null,
       priceCop: type === 'GIFT' ? null : parseInt(priceCop, 10),
+      stock: parsedStock,
       acceptsOffers: type === 'GIFT' ? false : acceptsOffers,
       deliveryArea: deliveryArea.trim(),
-      status: targetStatus,
+      status: parsedStock === 0 && targetStatus === 'AVAILABLE' ? 'SOLD' : targetStatus,
       images,
     };
 
@@ -166,7 +172,7 @@ export default function ProductForm({
       )}
 
       <form onSubmit={(e) => e.preventDefault()} className="bg-white rounded-3xl p-5 sm:p-7 border border-slate-200 shadow-sm space-y-6">
-        {/* Selector Visual Grande: NUEVO / USADO / REGALO */}
+        {/* Selector Visual Grande */}
         <div>
           <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-2">
             Tipo de Publicación *
@@ -213,7 +219,7 @@ export default function ProductForm({
           </div>
         </div>
 
-        {/* Subida de Fotos (1 a 5) */}
+        {/* Fotos */}
         <div>
           <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-2">
             Fotografías ({images.length}/5)
@@ -254,7 +260,7 @@ export default function ProductForm({
           </p>
         </div>
 
-        {/* Nombre del Artículo */}
+        {/* Nombre */}
         <div>
           <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
             Nombre del artículo * (máx 90 caracteres)
@@ -266,27 +272,45 @@ export default function ProductForm({
             value={title}
             onChange={(e) => setTitle(e.target.value)}
             placeholder="Ej. Bicicleta de Montaña Rin 29"
-            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 focus:ring-2 focus:ring-green-100 font-semibold text-slate-900"
+            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-semibold text-slate-900"
           />
           <span className="text-xs text-slate-400 float-right mt-1">{title.length}/90</span>
         </div>
 
-        {/* Categoría */}
-        <div>
-          <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-            Categoría *
-          </label>
-          <select
-            value={category}
-            onChange={(e) => setCategory(e.target.value)}
-            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 bg-white focus:border-green-600 font-medium text-slate-900"
-          >
-            {CATEGORIES.map((cat) => (
-              <option key={cat} value={cat}>
-                {cat}
-              </option>
-            ))}
-          </select>
+        {/* Categoría e Inventario */}
+        <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
+              Categoría *
+            </label>
+            <select
+              value={category}
+              onChange={(e) => setCategory(e.target.value)}
+              className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 bg-white focus:border-green-600 font-medium text-slate-900"
+            >
+              {CATEGORIES.map((cat) => (
+                <option key={cat} value={cat}>
+                  {cat}
+                </option>
+              ))}
+            </select>
+          </div>
+
+          <div>
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
+              Inventario Disponible (Unidades) *
+            </label>
+            <input
+              type="number"
+              min={0}
+              step={1}
+              value={stock}
+              onChange={(e) => setStock(e.target.value)}
+              placeholder="1"
+              className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-bold text-slate-900"
+            />
+            <p className="text-[11px] text-slate-400 mt-0.5">Si es 0, no se podrá comprar por Wompi.</p>
+          </div>
         </div>
 
         {/* Condición si es USADO */}
@@ -331,7 +355,6 @@ export default function ProductForm({
               </button>
             </div>
 
-            {/* Requisito Absoluto 5: Falla obligatoria si está dañado */}
             {condition === 'DAMAGED' && (
               <div className="pt-2">
                 <label className="block text-xs font-black uppercase tracking-wider text-rose-800 mb-1">
@@ -350,7 +373,7 @@ export default function ProductForm({
           </div>
         )}
 
-        {/* Precio en COP (solo ventas) */}
+        {/* Precio en COP */}
         {type !== 'GIFT' ? (
           <div className="space-y-3">
             <div>
@@ -372,7 +395,6 @@ export default function ProductForm({
               </div>
             </div>
 
-            {/* Switch Acepto Ofertas */}
             <label className="flex items-center space-x-3 cursor-pointer select-none bg-slate-50 p-3 rounded-xl border border-slate-200">
               <input
                 type="checkbox"
@@ -388,7 +410,7 @@ export default function ProductForm({
         ) : (
           <div className="bg-amber-50 p-4 rounded-2xl border border-amber-200 text-amber-900 text-sm font-bold flex items-center space-x-2">
             <span>🎁</span>
-            <span>Este artículo es un REGALO: se publicará como 100 % GRATIS y no admitirá precios.</span>
+            <span>Este artículo es un REGALO: se publicará como 100 % GRATIS y no admitirá cobros.</span>
           </div>
         )}
 
@@ -404,7 +426,6 @@ export default function ProductForm({
             placeholder="Ej. Bogotá (Zona Norte) o entrega a coordinar"
             className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-medium text-slate-900 text-sm"
           />
-          <p className="text-xs text-slate-400 mt-1">No ingreses tu dirección privada exacta.</p>
         </div>
 
         {/* Descripción */}
@@ -421,7 +442,7 @@ export default function ProductForm({
           />
         </div>
 
-        {/* Botones de acción del PRD: GUARDAR BORRADOR y PUBLICAR */}
+        {/* Botones */}
         <div className="pt-2 flex flex-col sm:flex-row gap-3">
           <button
             type="button"

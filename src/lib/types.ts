@@ -40,6 +40,7 @@ export interface ProductItem {
   condition: ProductCondition | null;
   damageDetails: string | null;
   priceCop: number | null;
+  stock: number;
   acceptsOffers: boolean;
   status: ProductStatus;
   deliveryArea: string | null;

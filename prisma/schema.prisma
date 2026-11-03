@@ -39,6 +39,7 @@ model Product {
   condition     ProductCondition?
   damageDetails String?
   priceCop      Int?
+  stock         Int               @default(1)
   acceptsOffers Boolean           @default(false)
   status        ProductStatus     @default(AVAILABLE)
   deliveryArea  String?

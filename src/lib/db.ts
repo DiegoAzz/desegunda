@@ -66,8 +66,6 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
     }
 
     if (!includeUnavailable) {
-      // Solo disponibles y reservados (para que se vea el badge RESERVADO pero no los vendidos/entregados/ocultos en la lista principal)
-      // O según PRD: "Los artículos VENDIDOS, ENTREGADOS u OCULTOS no pueden aparecer como disponibles. Los ocultos no se listan públicamente."
       whereClause.status = {
         in: ['AVAILABLE', 'RESERVED'],
       };
@@ -105,6 +103,7 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
         condition: p.condition as any,
         damageDetails: p.damageDetails,
         priceCop: p.priceCop,
+        stock: p.stock ?? 1,
         acceptsOffers: p.acceptsOffers,
         status: p.status as any,
         deliveryArea: p.deliveryArea,
@@ -178,6 +177,7 @@ export async function getProductBySlug(slug: string): Promise<ProductItem | null
         condition: item.condition as any,
         damageDetails: item.damageDetails,
         priceCop: item.priceCop,
+        stock: item.stock ?? 1,
         acceptsOffers: item.acceptsOffers,
         status: item.status as any,
         deliveryArea: item.deliveryArea,

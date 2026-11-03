@@ -22,6 +22,7 @@ export async function POST(req: NextRequest) {
       condition,
       damageDetails,
       priceCop,
+      stock = 1,
       acceptsOffers,
       status = 'AVAILABLE',
       deliveryArea,
@@ -39,7 +40,6 @@ export async function POST(req: NextRequest) {
       return NextResponse.json({ success: false, error: 'Tipo inválido' }, { status: 400 });
     }
 
-    // Regla 2 y 3: Venta requiere precio > 0; Regalo no admite precio
     let finalPriceCop: number | null = null;
     let finalAcceptsOffers = false;
 
@@ -58,7 +58,6 @@ export async function POST(req: NextRequest) {
       finalAcceptsOffers = Boolean(acceptsOffers);
     }
 
-    // Regla 4: Usados exigen condición; si está dañado, exige detalle de la falla
     let finalCondition: ProductCondition | null = null;
     let finalDamageDetails: string | null = null;
 
@@ -82,6 +81,12 @@ export async function POST(req: NextRequest) {
       }
     }
 
+    const parsedStock = Math.max(0, parseInt(stock, 10) || 1);
+    let finalStatus: ProductStatus = (status as ProductStatus) || 'AVAILABLE';
+    if (parsedStock === 0 && finalStatus === 'AVAILABLE') {
+      finalStatus = 'SOLD';
+    }
+
     const uniqueSlug = slugify(title);
 
     const createdProduct = await prisma.product.create({
@@ -94,8 +99,9 @@ export async function POST(req: NextRequest) {
         condition: finalCondition,
         damageDetails: finalDamageDetails,
         priceCop: finalPriceCop,
+        stock: parsedStock,
         acceptsOffers: finalAcceptsOffers,
-        status: (status as ProductStatus) || 'AVAILABLE',
+        status: finalStatus,
         deliveryArea: deliveryArea ? deliveryArea.trim() : null,
         images: {
           create: images.map((img: { storagePath: string; altText?: string }, index: number) => ({
