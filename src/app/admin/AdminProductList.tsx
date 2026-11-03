@@ -107,12 +107,10 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
             {/* Miniatura y Datos Básicos */}
             <div className="flex items-center space-x-3 w-full sm:w-auto">
               <div className="relative w-20 h-20 rounded-xl overflow-hidden bg-slate-100 shrink-0 border border-slate-200">
-                <Image
+                <img
                   src={mainImg}
                   alt={item.title}
-                  fill
-                  sizes="80px"
-                  className="object-cover"
+                  className="w-full h-full object-cover"
                 />
               </div>
 

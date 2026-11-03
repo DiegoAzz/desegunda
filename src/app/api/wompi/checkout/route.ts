@@ -70,11 +70,15 @@ export async function POST(req: NextRequest) {
       );
     }
 
-    // Llaves oficiales verificadas de Wompi (usando la llave pública exacta del panel del usuario)
-    const publicKey =
-      process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || 'pub_prod_GY4Z4CsYWPa41Ax4D3BEq14Y5Q31QUam';
-    const integritySecret =
-      process.env.WOMPI_INTEGRITY_SECRET || 'prod_integrity_wWDwKGW5r3VzaUmGA61XgXBAPGOYqpNk';
+    // Llave pública EXACTA de producción verificada en el panel de Wompi del comercio
+    const publicKey = (
+      process.env.NEXT_PUBLIC_WOMPI_PUBLIC_KEY || 'pub_prod_GY4Z4CsYWPa41Ax4D3BEq14Y5Q31QUam'
+    ).trim();
+
+    const integritySecret = (
+      process.env.WOMPI_INTEGRITY_SECRET || 'prod_integrity_wWDwKGW5r3VzaUmGA61XgXBAPGOYqpNk'
+    ).trim();
+
     const siteUrl = (process.env.NEXT_PUBLIC_SITE_URL || 'https://desegunda.appzplay.online').replace(/\/$/, '');
 
     const amountInCents = product.priceCop * 100;
@@ -83,7 +87,7 @@ export async function POST(req: NextRequest) {
     const redirectUrl = `${siteUrl}/p/${product.slug}?wompi_ref=${reference}`;
 
     const params = new URLSearchParams({
-      'public-key': publicKey.trim(),
+      'public-key': publicKey,
       currency: 'COP',
       'amount-in-cents': amountInCents.toString(),
       reference,
@@ -95,9 +99,13 @@ export async function POST(req: NextRequest) {
 
     return NextResponse.json({
       success: true,
-      checkoutUrl,
-      reference,
+      publicKey,
+      currency: 'COP',
       amountInCents,
+      reference,
+      signature,
+      redirectUrl,
+      checkoutUrl,
       productTitle: product.title,
     });
   } catch (error: any) {

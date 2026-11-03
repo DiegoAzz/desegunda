@@ -1,6 +1,8 @@
 import { PrismaClient } from '@prisma/client';
 import { INITIAL_PRODUCTS, INITIAL_STORE_SETTINGS } from './initial-data';
 import { ProductItem, ProductType, StoreSettingsItem } from './types';
+import fs from 'fs';
+import path from 'path';
 
 declare global {
   // eslint-disable-next-line no-var
@@ -15,6 +17,22 @@ export const prisma =
 
 if (process.env.NODE_ENV !== 'production') {
   global.prisma = prisma;
+}
+
+function loadLocalCustomProducts(): ProductItem[] {
+  try {
+    const uploadDir = process.env.UPLOAD_DIR || path.join(process.cwd(), 'public', 'uploads');
+    const filePath = path.join(uploadDir, 'custom_products.json');
+    if (fs.existsSync(filePath)) {
+      const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+      if (Array.isArray(data)) {
+        return data;
+      }
+    }
+  } catch {
+    // Si no existe o hay error, continuar sin problemas
+  }
+  return [];
 }
 
 /**
@@ -36,7 +54,7 @@ export async function getStoreSettings(): Promise<StoreSettingsItem> {
       };
     }
   } catch {
-    // Si la base de datos no está disponible localmente, usar datos iniciales
+    // Usar datos iniciales si la BD no está disponible
   }
   return INITIAL_STORE_SETTINGS;
 }
@@ -49,10 +67,13 @@ export interface GetProductsFilter {
 }
 
 /**
- * Obtiene la lista de productos con filtros
+ * Obtiene la lista de productos con filtros combinando BD y respaldo local
  */
 export async function getProducts(filter: GetProductsFilter = {}): Promise<ProductItem[]> {
   const { type, query, category, includeUnavailable = false } = filter;
+  const localCustom = loadLocalCustomProducts();
+
+  let dbProducts: ProductItem[] = [];
 
   try {
     const whereClause: any = {};
@@ -93,7 +114,7 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
     });
 
     if (items && items.length > 0) {
-      return items.map((p) => ({
+      dbProducts = items.map((p) => ({
         id: p.id,
         slug: p.slug,
         title: p.title,
@@ -119,11 +140,23 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
       }));
     }
   } catch {
-    // Fallback a memoria / datos iniciales si no hay conexión a PostgreSQL
+    // Si falla la BD, usamos catálogo local
   }
 
-  // Filtrado sobre datos iniciales en memoria
-  let list = [...INITIAL_PRODUCTS];
+  // Unir productos locales creados por el admin con el catálogo base
+  let list = [...localCustom, ...dbProducts];
+
+  // Si no hay ninguno de los dos, usar productos semilla
+  if (list.length === 0) {
+    list = [...INITIAL_PRODUCTS];
+  } else {
+    // Añadir productos semilla que no estén duplicados por slug
+    for (const p of INITIAL_PRODUCTS) {
+      if (!list.some((item) => item.slug === p.slug)) {
+        list.push(p);
+      }
+    }
+  }
 
   if (!includeUnavailable) {
     list = list.filter((p) => p.status === 'AVAILABLE' || p.status === 'RESERVED');
@@ -156,6 +189,12 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
  * Obtiene un producto individual por su slug
  */
 export async function getProductBySlug(slug: string): Promise<ProductItem | null> {
+  const localCustom = loadLocalCustomProducts();
+  const fromLocal = localCustom.find((p) => p.slug === slug);
+  if (fromLocal && fromLocal.status !== 'HIDDEN') {
+    return fromLocal;
+  }
+
   try {
     const item = await prisma.product.findUnique({
       where: { slug },

@@ -93,6 +93,7 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
             src={product.images?.[0]?.storagePath || '/placeholder.svg'}
             alt={product.images?.[0]?.altText || product.title}
             fill
+            unoptimized
             sizes="(max-width: 640px) 100vw, 640px"
             className="object-cover"
             priority

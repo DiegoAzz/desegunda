@@ -227,7 +227,7 @@ export default function ProductForm({
           <div className="grid grid-cols-3 sm:grid-cols-5 gap-2 mb-2">
             {images.map((img, idx) => (
               <div key={idx} className="relative aspect-square rounded-xl overflow-hidden bg-slate-100 border border-slate-300">
-                <Image src={img.storagePath} alt="" fill sizes="100px" className="object-cover" />
+                <img src={img.storagePath} alt="" className="w-full h-full object-cover" />
                 <button
                   type="button"
                   onClick={() => handleRemoveImage(idx)}
