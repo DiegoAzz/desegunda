@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prisma, removeProductFromLocalFile, markProductAsDeleted } from '@/lib/db';
 import { ProductType, ProductCondition, ProductStatus } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -149,9 +149,31 @@ export async function DELETE(
       return NextResponse.json({ success: false, error: 'No autorizado' }, { status: 401 });
     }
 
-    await prisma.product.delete({
-      where: { id: params.id },
-    });
+    const targetId = params.id;
+
+    // 1. Eliminar imágenes asociadas en PostgreSQL
+    try {
+      await prisma.productImage.deleteMany({
+        where: { productId: targetId },
+      });
+    } catch {}
+
+    // 2. Eliminar producto en PostgreSQL (por id o slug de forma segura)
+    try {
+      await prisma.product.deleteMany({
+        where: {
+          OR: [{ id: targetId }, { slug: targetId }],
+        },
+      });
+    } catch (dbErr) {
+      console.warn('Aviso eliminando de base de datos:', dbErr);
+    }
+
+    // 3. Eliminar de archivo local si existía allí
+    removeProductFromLocalFile(targetId);
+
+    // 4. Registrar en lista negra de eliminados para que INITIAL_PRODUCTS nunca lo vuelva a mostrar
+    markProductAsDeleted(targetId);
 
     return NextResponse.json({ success: true });
   } catch (error) {

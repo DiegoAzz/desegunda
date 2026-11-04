@@ -47,6 +47,124 @@ export function loadLocalCustomProducts(): ProductItem[] {
   return [];
 }
 
+export function saveProductToLocalFile(product: any) {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        const filePath = path.join(dir, 'custom_products.json');
+        let existing: any[] = [];
+        if (fs.existsSync(filePath)) {
+          try {
+            existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          } catch {
+            existing = [];
+          }
+        }
+        existing = [product, ...existing.filter((p) => p.id !== product.id && p.slug !== product.slug)];
+        fs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf-8');
+      } catch {}
+    }
+  } catch (err) {
+    console.error('Error guardando en archivo local:', err);
+  }
+}
+
+export function removeProductFromLocalFile(idOrSlug: string) {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      const filePath = path.join(dir, 'custom_products.json');
+      if (fs.existsSync(filePath)) {
+        try {
+          const existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (Array.isArray(existing)) {
+            const filtered = existing.filter((p) => p.id !== idOrSlug && p.slug !== idOrSlug);
+            fs.writeFileSync(filePath, JSON.stringify(filtered, null, 2), 'utf-8');
+          }
+        } catch {}
+      }
+    }
+  } catch (err) {
+    console.error('Error removiendo de archivo local:', err);
+  }
+}
+
+export function markProductAsDeleted(idOrSlug: string) {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        const filePath = path.join(dir, 'deleted_ids.json');
+        let existing: string[] = [];
+        if (fs.existsSync(filePath)) {
+          try {
+            existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          } catch {}
+        }
+        if (!existing.includes(idOrSlug)) {
+          existing.push(idOrSlug);
+          fs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf-8');
+        }
+      } catch {}
+    }
+  } catch (err) {
+    console.error('Error marcando producto eliminado:', err);
+  }
+}
+
+export function loadDeletedProductIds(): string[] {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      const filePath = path.join(dir, 'deleted_ids.json');
+      if (fs.existsSync(filePath)) {
+        try {
+          const list = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (Array.isArray(list)) {
+            return list;
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+  return [];
+}
+
 /**
  * Obtiene los ajustes de la tienda
  */
@@ -155,6 +273,8 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
     // Si falla la BD, usamos catálogo local
   }
 
+  const deletedIds = loadDeletedProductIds();
+
   // Unir productos locales creados por el admin con el catálogo base
   let list = [...localCustom, ...dbProducts];
 
@@ -168,6 +288,11 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
         list.push(p);
       }
     }
+  }
+
+  // Filtrar productos eliminados por el administrador
+  if (deletedIds.length > 0) {
+    list = list.filter((p) => !deletedIds.includes(p.id) && !deletedIds.includes(p.slug));
   }
 
   if (!includeUnavailable) {
@@ -201,6 +326,11 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
  * Obtiene un producto individual por su slug
  */
 export async function getProductBySlug(slug: string): Promise<ProductItem | null> {
+  const deletedIds = loadDeletedProductIds();
+  if (deletedIds.includes(slug)) {
+    return null;
+  }
+
   const localCustom = loadLocalCustomProducts();
   const fromLocal = localCustom.find((p) => p.slug === slug);
   if (fromLocal && fromLocal.status !== 'HIDDEN') {

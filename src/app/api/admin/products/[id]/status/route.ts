@@ -1,6 +1,7 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prisma, loadLocalCustomProducts, saveProductToLocalFile } from '@/lib/db';
+import { INITIAL_PRODUCTS } from '@/lib/initial-data';
 import { ProductStatus } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -21,12 +22,38 @@ export async function PATCH(
       return NextResponse.json({ success: false, error: 'Estado inválido' }, { status: 400 });
     }
 
-    const updated = await prisma.product.update({
-      where: { id: params.id },
-      data: { status: status as ProductStatus },
-    });
+    const targetId = params.id;
+    let updatedInDb = false;
 
-    return NextResponse.json({ success: true, product: updated });
+    // 1. Intentar actualizar en PostgreSQL
+    try {
+      await prisma.product.updateMany({
+        where: {
+          OR: [{ id: targetId }, { slug: targetId }],
+        },
+        data: { status: status as ProductStatus },
+      });
+      updatedInDb = true;
+    } catch (dbErr) {
+      console.warn('Aviso actualizando estado en BD:', dbErr);
+    }
+
+    // 2. Actualizar o persistir en catálogo local híbrido
+    const localCustom = loadLocalCustomProducts();
+    const existingLocal = localCustom.find((p) => p.id === targetId || p.slug === targetId);
+    if (existingLocal) {
+      existingLocal.status = status as ProductStatus;
+      saveProductToLocalFile(existingLocal);
+    } else {
+      // Si era un producto inicial semilla, guardarlo con su nuevo estado
+      const seedProduct = INITIAL_PRODUCTS.find((p) => p.id === targetId || p.slug === targetId);
+      if (seedProduct) {
+        const cloned = { ...seedProduct, status: status as ProductStatus };
+        saveProductToLocalFile(cloned);
+      }
+    }
+
+    return NextResponse.json({ success: true, status });
   } catch (error) {
     console.error('Error cambiando estado:', error);
     return NextResponse.json({ success: false, error: 'Error al cambiar estado' }, { status: 500 });
