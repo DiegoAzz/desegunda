@@ -159,6 +159,20 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
                 EDITAR
               </Link>
 
+              {/* Botón para reactivar si está VENDIDO o ENTREGADO */}
+              {(isSold || isGiven) && (
+                <button
+                  type="button"
+                  disabled={isLoading}
+                  onClick={() => handleStatusChange(item.id, 'AVAILABLE')}
+                  className="px-3 py-1.5 bg-emerald-600 hover:bg-emerald-700 text-white text-xs font-bold rounded-lg transition shadow-xs flex items-center space-x-1"
+                  title="Volver a poner a la venta este artículo"
+                >
+                  <span>✓</span>
+                  <span>PONER DISPONIBLE</span>
+                </button>
+              )}
+
               {/* Toggle Reservado */}
               {isAvailable && (
                 <button
@@ -175,9 +189,10 @@ export default function AdminProductList({ initialProducts }: AdminProductListPr
                   type="button"
                   disabled={isLoading}
                   onClick={() => handleStatusChange(item.id, 'AVAILABLE')}
-                  className="px-3 py-1.5 bg-green-100 hover:bg-green-200 text-green-900 text-xs font-bold rounded-lg transition"
+                  className="px-3 py-1.5 bg-green-600 hover:bg-green-700 text-white text-xs font-bold rounded-lg transition shadow-xs flex items-center space-x-1"
                 >
-                  DISPONIBLE
+                  <span>✓</span>
+                  <span>DISPONIBLE</span>
                 </button>
               )}
 

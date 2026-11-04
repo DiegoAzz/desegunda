@@ -1,7 +1,7 @@
 import Link from 'next/link';
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { getProducts } from '@/lib/db';
+import { getProducts, getStoreSettings } from '@/lib/db';
 import AdminProductList from './AdminProductList';
 
 export const dynamic = 'force-dynamic';
@@ -12,8 +12,11 @@ export default async function AdminDashboardPage() {
     redirect('/admin/login');
   }
 
-  // Cargar productos usando el canal unificado (BD + respaldo local - eliminados)
-  const products = await getProducts({ includeUnavailable: true });
+  // Cargar productos y ajustes usando el canal unificado
+  const [products, settings] = await Promise.all([
+    getProducts({ includeUnavailable: true }),
+    getStoreSettings(),
+  ]);
 
   // Contadores según PRD: Disponibles, Reservados, Vendidos, Entregados
   const countAvailable = products.filter((p) => p.status === 'AVAILABLE').length;
@@ -33,7 +36,7 @@ export default async function AdminDashboardPage() {
             </h1>
           </div>
           <p className="text-xs text-slate-500 mt-1 font-medium">
-            Administración de publicaciones de LO TENGO
+            Administración de publicaciones de {settings.storeName}
           </p>
         </div>
 

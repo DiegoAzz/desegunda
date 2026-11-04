@@ -12,7 +12,7 @@ async function main() {
     update: {},
     create: {
       id: 'default',
-      storeName: 'LO TENGO',
+      storeName: 'DE SEGUNDA',
       tagline: 'Cosas buenas para alguien más.',
       whatsappNumber: '573137751715',
       defaultDeliveryArea: 'Bogotá, Colombia',

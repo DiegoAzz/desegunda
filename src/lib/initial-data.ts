@@ -2,7 +2,7 @@ import { ProductItem, StoreSettingsItem } from './types';
 
 export const INITIAL_STORE_SETTINGS: StoreSettingsItem = {
   id: 'default',
-  storeName: 'LO TENGO',
+  storeName: 'DE SEGUNDA',
   tagline: 'Cosas buenas para alguien más.',
   whatsappNumber: '573137751715',
   defaultDeliveryArea: 'Bogotá, Colombia (Zona Norte / Chapinero)',

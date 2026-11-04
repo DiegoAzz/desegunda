@@ -4,7 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SafeImage from '@/components/SafeImage';
 import Link from 'next/link';
-import { CATEGORIES, ProductType, ProductCondition } from '@/lib/types';
+import { CATEGORIES, ProductType, ProductCondition, ProductStatus } from '@/lib/types';
 
 interface ProductFormProps {
   initialData?: any;
@@ -27,6 +27,7 @@ export default function ProductForm({
   const [damageDetails, setDamageDetails] = useState(initialData?.damageDetails || '');
   const [priceCop, setPriceCop] = useState(initialData?.priceCop?.toString() || '');
   const [stock, setStock] = useState(initialData?.stock !== undefined ? initialData.stock.toString() : '1');
+  const [productStatus, setProductStatus] = useState<ProductStatus>(initialData?.status || 'AVAILABLE');
   const [acceptsOffers, setAcceptsOffers] = useState(initialData?.acceptsOffers ?? false);
   const [deliveryArea, setDeliveryArea] = useState(initialData?.deliveryArea || defaultDeliveryArea);
   const [images, setImages] = useState<Array<{ storagePath: string; altText?: string; previewUrl?: string }>>(
@@ -129,7 +130,7 @@ export default function ProductForm({
       stock: parsedStock,
       acceptsOffers: type === 'GIFT' ? false : acceptsOffers,
       deliveryArea: deliveryArea.trim(),
-      status: parsedStock === 0 && targetStatus === 'AVAILABLE' ? 'SOLD' : targetStatus,
+      status: parsedStock === 0 ? 'SOLD' : (isEdit ? productStatus : targetStatus),
       images: images.map((img) => ({
         storagePath: img.storagePath,
         altText: img.altText || title.trim(),
@@ -452,6 +453,50 @@ export default function ProductForm({
             className="w-full p-3 rounded-xl border border-slate-300 focus:border-green-600 text-sm font-medium text-slate-900"
           />
         </div>
+
+        {/* Selector de estado en edición */}
+        {isEdit && (
+          <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+            <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
+              Estado de la Publicación
+            </label>
+            <div className="grid grid-cols-3 gap-2">
+              <button
+                type="button"
+                onClick={() => setProductStatus('AVAILABLE')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition ${
+                  productStatus === 'AVAILABLE'
+                    ? 'bg-emerald-600 text-white border-emerald-700 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200'
+                }`}
+              >
+                DISPONIBLE
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductStatus('RESERVED')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition ${
+                  productStatus === 'RESERVED'
+                    ? 'bg-amber-600 text-white border-amber-700 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200'
+                }`}
+              >
+                RESERVADO
+              </button>
+              <button
+                type="button"
+                onClick={() => setProductStatus('SOLD')}
+                className={`py-2 px-3 rounded-xl text-xs font-bold border transition ${
+                  productStatus === 'SOLD'
+                    ? 'bg-slate-800 text-white border-slate-900 shadow-xs'
+                    : 'bg-white text-slate-700 border-slate-200'
+                }`}
+              >
+                VENDIDO
+              </button>
+            </div>
+          </div>
+        )}
 
         {/* Botones */}
         <div className="pt-2 flex flex-col sm:flex-row gap-3">

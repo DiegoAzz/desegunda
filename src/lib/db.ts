@@ -369,9 +369,9 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
     list = list.filter((p) => !deletedIds.includes(p.id) && !deletedIds.includes(p.slug));
   }
 
-  // Filtrar solo disponibles para la tienda pública si no se solicita todo
+  // Filtrar para la tienda pública: mostrar todos los artículos publicados (disponibles, reservados y vendidos)
   if (!includeUnavailable) {
-    list = list.filter((p) => p.status === 'AVAILABLE' || p.status === 'RESERVED');
+    list = list.filter((p) => p.status !== 'HIDDEN' && p.status !== 'DRAFT');
   }
 
   if (type) {

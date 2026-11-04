@@ -34,24 +34,24 @@ export default function BigCategoryButtons({ activeType }: BigCategoryButtonsPro
   ];
 
   return (
-    <nav aria-label="Categorías principales" className="w-full space-y-3">
+    <nav aria-label="Categorías principales" className="w-full grid grid-cols-1 sm:grid-cols-3 gap-3 sm:gap-4">
       {buttons.map((btn) => {
         const isActive = activeType === btn.id;
         return (
           <Link
             key={btn.id}
             href={btn.href}
-            className={`w-full min-h-[56px] px-6 py-4 rounded-2xl flex items-center justify-between text-xl font-black tracking-wide shadow-md transition-all active:scale-[0.98] border-b-4 ${
+            className={`min-h-[56px] px-5 py-3.5 rounded-xl flex items-center justify-between text-base sm:text-lg font-black tracking-wide shadow-sm transition-all active:scale-[0.98] border-b-4 ${
               isActive ? btn.activeColor : btn.color
             }`}
           >
-            <div className="flex items-center space-x-3">
-              <span className="text-2xl" role="img" aria-hidden="true">
+            <div className="flex items-center space-x-2.5">
+              <span className="text-xl sm:text-2xl" role="img" aria-hidden="true">
                 {btn.icon}
               </span>
               <span>{btn.label}</span>
             </div>
-            <span className="text-2xl font-bold opacity-80" aria-hidden="true">
+            <span className="text-xl font-bold opacity-80" aria-hidden="true">
               →
             </span>
           </Link>

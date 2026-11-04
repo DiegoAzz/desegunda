@@ -32,7 +32,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
         <div className="flex items-center justify-between border-b border-slate-200 pb-2">
           <h2 className="text-xl font-black text-slate-900 tracking-tight flex items-center space-x-2">
             <span>📦</span>
-            <span>{query ? `Resultados para «${query}»` : 'Lo que tengo disponible'}</span>
+            <span>{query ? `Resultados para «${query}»` : 'Publicaciones'}</span>
           </h2>
           <span className="text-xs font-bold text-slate-500 bg-slate-200/80 px-2.5 py-1 rounded-full">
             {products.length} {products.length === 1 ? 'artículo' : 'artículos'}
@@ -54,7 +54,7 @@ export default async function HomePage({ searchParams }: HomePageProps) {
             </p>
           </div>
         ) : (
-          <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
+          <div className="grid grid-cols-2 sm:grid-cols-2 md:grid-cols-3 lg:grid-cols-4 gap-3 sm:gap-4">
             {products.map((product) => (
               <ProductCard key={product.id} product={product} />
             ))}
