@@ -2,6 +2,101 @@ import { SignJWT, jwtVerify } from 'jose';
 import { cookies } from 'next/headers';
 import bcrypt from 'bcryptjs';
 import { prisma } from './db';
+import fs from 'fs';
+import path from 'path';
+import os from 'os';
+
+export interface AdminUserItem {
+  id: string;
+  email: string;
+  passwordHash: string;
+  createdAt?: string | Date;
+}
+
+export function loadLocalAdminUsers(): AdminUserItem[] {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      const filePath = path.join(dir, 'custom_users.json');
+      if (fs.existsSync(filePath)) {
+        try {
+          const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (Array.isArray(data)) {
+            return data;
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+  return [];
+}
+
+export function saveLocalAdminUser(user: AdminUserItem) {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        const filePath = path.join(dir, 'custom_users.json');
+        let existing: AdminUserItem[] = [];
+        if (fs.existsSync(filePath)) {
+          try {
+            existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          } catch {
+            existing = [];
+          }
+        }
+        existing = [user, ...existing.filter((u) => u.id !== user.id && u.email.toLowerCase() !== user.email.toLowerCase())];
+        fs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf-8');
+      } catch {}
+    }
+  } catch (err) {
+    console.error('Error guardando usuario local:', err);
+  }
+}
+
+export function removeLocalAdminUser(idOrEmail: string) {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      const filePath = path.join(dir, 'custom_users.json');
+      if (fs.existsSync(filePath)) {
+        try {
+          const list = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (Array.isArray(list)) {
+            const filtered = list.filter((u) => u.id !== idOrEmail && u.email.toLowerCase() !== idOrEmail.toLowerCase());
+            fs.writeFileSync(filePath, JSON.stringify(filtered, null, 2), 'utf-8');
+          }
+        } catch {}
+      }
+    }
+  } catch (err) {
+    console.error('Error eliminando usuario local:', err);
+  }
+}
 
 const JWT_SECRET = new TextEncoder().encode(
   process.env.AUTH_SECRET || 'lotengo_super_secret_jwt_key_at_least_32_chars_long'
@@ -96,6 +191,19 @@ export async function verifyAdminCredentials(email: string, passwordPlain: strin
     }
   } catch (err) {
     console.warn('Verificación en BD omitida por timeout:', err);
+  }
+
+  // 3. Si no se encontró en PostgreSQL, verificar en archivo local
+  const localUsers = loadLocalAdminUsers();
+  const localFound = localUsers.find((u) => u.email.toLowerCase() === inputEmail);
+  if (localFound) {
+    const isValid = await bcrypt.compare(passwordPlain, localFound.passwordHash);
+    if (isValid) {
+      return {
+        id: localFound.id,
+        email: localFound.email,
+      };
+    }
   }
 
   return null;

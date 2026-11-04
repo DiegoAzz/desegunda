@@ -51,6 +51,13 @@ export default async function AdminDashboardPage() {
           </Link>
 
           <Link
+            href="/admin/usuarios"
+            className="min-h-[48px] px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm flex items-center transition"
+          >
+            Usuarios
+          </Link>
+
+          <Link
             href="/admin/ajustes"
             className="min-h-[48px] px-3.5 py-2.5 bg-slate-100 hover:bg-slate-200 text-slate-700 rounded-xl font-bold text-sm flex items-center transition"
           >

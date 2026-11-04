@@ -181,6 +181,20 @@ export default function AdminSettingsPage() {
         </button>
       </form>
 
+      {/* Gestión de Usuarios */}
+      <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex items-center justify-between gap-3">
+        <div>
+          <h3 className="font-black text-slate-900 text-sm">Usuarios Administradores</h3>
+          <p className="text-xs text-slate-500">Crea o elimina accesos al panel /admin</p>
+        </div>
+        <Link
+          href="/admin/usuarios"
+          className="px-4 py-2 bg-slate-900 hover:bg-slate-800 text-white rounded-xl font-bold text-xs transition shrink-0"
+        >
+          Gestionar Usuarios →
+        </Link>
+      </div>
+
       {/* Cerrar sesión */}
       <div className="bg-white rounded-3xl p-4 border border-slate-200 flex justify-center">
         <LogoutButton className="w-full justify-center" label="Cerrar Sesión del Administrador" />
