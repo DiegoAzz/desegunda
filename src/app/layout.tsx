@@ -2,12 +2,14 @@ import type { Metadata, Viewport } from 'next';
 import './globals.css';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
+import SplashScreen from '@/components/SplashScreen';
 import { getStoreSettings } from '@/lib/db';
 
 export const viewport: Viewport = {
   width: 'device-width',
   initialScale: 1,
   maximumScale: 5,
+  themeColor: '#FFE600',
 };
 
 export async function generateMetadata(): Promise<Metadata> {
@@ -27,7 +29,8 @@ export default async function RootLayout({
 
   return (
     <html lang="es">
-      <body className="min-h-screen flex flex-col bg-slate-50 text-slate-900 antialiased selection:bg-green-100 selection:text-green-900">
+      <body className="min-h-screen flex flex-col bg-[#EBEBEB] text-[#333333] antialiased selection:bg-[#FFE600] selection:text-[#2D3277]">
+        <SplashScreen />
         <Header storeName={settings.storeName} tagline={settings.tagline} />
         <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-6">
           {children}

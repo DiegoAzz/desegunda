@@ -44,9 +44,9 @@ export default function SearchBar({
   };
 
   return (
-    <form onSubmit={handleSearch} className="w-full relative my-4" role="search">
+    <form onSubmit={handleSearch} className="w-full relative my-3" role="search">
       <div className="relative flex items-center">
-        <span className="absolute left-4 text-xl select-none" aria-hidden="true">
+        <span className="absolute left-4 text-xl select-none text-slate-400" aria-hidden="true">
           🔎
         </span>
         <input
@@ -55,7 +55,7 @@ export default function SearchBar({
           onChange={(e) => setSearchTerm(e.target.value)}
           placeholder={placeholder}
           aria-label="Buscar producto por nombre o categoría"
-          className="w-full min-h-[56px] pl-12 pr-12 text-base md:text-lg bg-white border-2 border-slate-300 rounded-2xl focus:border-green-600 focus:outline-hidden focus:ring-4 focus:ring-green-100 text-slate-900 placeholder-slate-400 font-medium transition shadow-xs"
+          className="w-full min-h-[52px] pl-12 pr-12 text-base bg-white border border-slate-300 rounded-full focus:border-[#3483FA] focus:outline-hidden focus:ring-4 focus:ring-blue-100 text-[#333333] placeholder-slate-400 font-medium transition shadow-xs"
         />
         {searchTerm && (
           <button

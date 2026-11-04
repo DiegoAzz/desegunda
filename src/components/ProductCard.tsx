@@ -90,10 +90,10 @@ export default function ProductCard({ product }: ProductCardProps) {
             )}
           </div>
 
-          {/* Botón VER PRODUCTO (Texto exacto del PRD) */}
+          {/* Botón VER PRODUCTO (Texto exacto del PRD estilo Mercado Libre) */}
           <Link
             href={`/p/${product.slug}`}
-            className="w-full min-h-[48px] mt-2 bg-slate-900 hover:bg-green-700 text-white rounded-xl font-bold flex items-center justify-center space-x-2 transition-colors active:scale-[0.99] text-base"
+            className="w-full min-h-[48px] mt-2 bg-[#3483FA] hover:bg-[#2968C8] text-white rounded-xl font-bold flex items-center justify-center space-x-2 transition-colors active:scale-[0.99] text-base shadow-xs"
           >
             <span>VER PRODUCTO</span>
             <span aria-hidden="true">→</span>

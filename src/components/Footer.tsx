@@ -2,9 +2,9 @@ import Link from 'next/link';
 
 export default function Footer() {
   return (
-    <footer className="bg-slate-100 border-t border-slate-200 mt-12 py-8 text-center text-slate-600">
+    <footer className="bg-white border-t border-slate-300/70 mt-12 py-8 text-center text-slate-600">
       <div className="max-w-2xl mx-auto px-4 space-y-3">
-        <div className="text-xl font-bold text-slate-900 flex items-center justify-center space-x-1">
+        <div className="text-xl font-black text-[#2D3277] flex items-center justify-center space-x-1.5">
           <span>♻️</span>
           <span>LO TENGO</span>
         </div>
