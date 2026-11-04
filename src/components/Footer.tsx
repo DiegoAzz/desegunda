@@ -1,5 +1,3 @@
-import Link from 'next/link';
-
 interface FooterProps {
   storeName?: string;
 }
@@ -20,11 +18,6 @@ export default function Footer({ storeName = 'DE SEGUNDA' }: FooterProps) {
         <p className="text-xs text-slate-400">
           Sin registros para compradores • Pagos seguros con Wompi (PSE, Nequi, Bancolombia, Tarjetas) • 100 % transparente
         </p>
-        <div className="pt-2">
-          <Link href="/admin" className="text-xs text-slate-400 hover:text-slate-600 underline">
-            Acceso Administración
-          </Link>
-        </div>
       </div>
     </footer>
   );

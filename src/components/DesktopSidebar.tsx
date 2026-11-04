@@ -3,10 +3,6 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-interface DesktopSidebarProps {
-  isAdmin?: boolean;
-}
-
 interface NavItem {
   id: string;
   label: string;
@@ -16,10 +12,10 @@ interface NavItem {
   isExternal?: boolean;
 }
 
-export default function DesktopSidebar({ isAdmin = false }: DesktopSidebarProps) {
+export default function DesktopSidebar() {
   const pathname = usePathname();
 
-  const customerItems: NavItem[] = [
+  const navItems: NavItem[] = [
     {
       id: 'home',
       label: 'Inicio',
@@ -58,25 +54,6 @@ export default function DesktopSidebar({ isAdmin = false }: DesktopSidebarProps)
     },
   ];
 
-  const adminItems: NavItem[] = [
-    {
-      id: 'admin',
-      label: 'Mis Productos (Admin)',
-      icon: '📦',
-      href: '/admin',
-      active: pathname.startsWith('/admin') && pathname !== '/admin/ajustes',
-    },
-    {
-      id: 'ajustes',
-      label: 'Ajustes de Tienda',
-      icon: '⚙️',
-      href: '/admin/ajustes',
-      active: pathname === '/admin/ajustes',
-    },
-  ];
-
-  const navItems = isAdmin ? [...customerItems, ...adminItems] : customerItems;
-
   const handleSearchFocus = () => {
     const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement | null;
     if (searchInput) {
@@ -85,13 +62,6 @@ export default function DesktopSidebar({ isAdmin = false }: DesktopSidebarProps)
     } else {
       window.location.href = '/';
     }
-  };
-
-  const handleLogout = async () => {
-    try {
-      await fetch('/api/auth/logout', { method: 'POST' });
-    } catch {}
-    window.location.href = '/admin/login';
   };
 
   return (
@@ -147,7 +117,7 @@ export default function DesktopSidebar({ isAdmin = false }: DesktopSidebarProps)
         </nav>
       </div>
 
-      {/* Bottom: Botón de Búsqueda y Cerrar Sesión si es Admin */}
+      {/* Bottom: Botón de Búsqueda Rápida */}
       <div className="flex flex-col items-center space-y-3 w-full px-2">
         <button
           type="button"
@@ -160,20 +130,6 @@ export default function DesktopSidebar({ isAdmin = false }: DesktopSidebarProps)
             Buscar
           </span>
         </button>
-
-        {isAdmin && (
-          <button
-            type="button"
-            onClick={handleLogout}
-            className="relative group w-11 h-11 rounded-xl flex items-center justify-center text-xl text-rose-600 hover:bg-rose-50 hover:text-rose-800 transition-all cursor-pointer"
-            title="Cerrar sesión de administrador"
-          >
-            <span>🚪</span>
-            <span className="absolute left-14 opacity-0 group-hover:opacity-100 invisible group-hover:visible bg-rose-900 text-white text-xs font-bold py-1.5 px-3 rounded-xl shadow-xl whitespace-nowrap transition-all duration-150 z-50 pointer-events-none">
-              Cerrar Sesión
-            </span>
-          </button>
-        )}
       </div>
     </aside>
   );

@@ -1,16 +1,13 @@
 import Link from 'next/link';
-import LogoutButton from './LogoutButton';
 
 interface HeaderProps {
   storeName?: string;
   tagline?: string;
-  isAdmin?: boolean;
 }
 
 export default function Header({
   storeName = 'DE SEGUNDA',
   tagline = 'Cosas buenas para alguien más.',
-  isAdmin = false,
 }: HeaderProps) {
   return (
     <header className="bg-[#FFE600] border-b border-[#ebd300] sticky top-0 z-30 shadow-xs">
@@ -54,35 +51,18 @@ export default function Header({
           </Link>
         </nav>
 
-        {/* Acciones de usuario / Administrador */}
+        {/* Botón de atención por WhatsApp para compradores */}
         <div className="flex items-center space-x-2 shrink-0">
-          {isAdmin ? (
-            <>
-              <Link
-                href="/admin"
-                className="text-xs font-bold text-[#2D3277] bg-white/90 hover:bg-white px-3 py-1.5 rounded-full transition border border-[#2D3277]/15 shadow-2xs flex items-center space-x-1"
-                title="Panel de administración"
-              >
-                <span>⚙️</span>
-                <span className="hidden sm:inline">Mis Productos</span>
-              </Link>
-              <LogoutButton
-                className="min-h-[32px] px-2.5 py-1 text-xs rounded-full"
-                label="Salir"
-              />
-            </>
-          ) : (
-            <a
-              href="https://wa.me/573137751715"
-              target="_blank"
-              rel="noopener noreferrer"
-              className="text-xs font-bold text-[#2D3277] bg-white/80 hover:bg-white px-3.5 py-1.5 rounded-full transition border border-[#2D3277]/15 shadow-2xs flex items-center space-x-1.5"
-              title="Contacto directo por WhatsApp"
-            >
-              <span role="img" aria-hidden="true">💬</span>
-              <span>WhatsApp</span>
-            </a>
-          )}
+          <a
+            href="https://wa.me/573137751715"
+            target="_blank"
+            rel="noopener noreferrer"
+            className="text-xs font-bold text-[#2D3277] bg-white/80 hover:bg-white px-3.5 py-1.5 rounded-full transition border border-[#2D3277]/15 shadow-2xs flex items-center space-x-1.5"
+            title="Contacto directo por WhatsApp"
+          >
+            <span role="img" aria-hidden="true">💬</span>
+            <span>WhatsApp</span>
+          </a>
         </div>
       </div>
     </header>

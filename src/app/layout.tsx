@@ -37,8 +37,8 @@ export default async function RootLayout({
     <html lang="es">
       <body className="min-h-screen flex flex-col bg-[#EBEBEB] text-[#333333] antialiased selection:bg-[#FFE600] selection:text-[#2D3277] md:pl-16">
         <SplashScreen />
-        <DesktopSidebar isAdmin={isAdmin} />
-        <Header storeName={settings.storeName} tagline={settings.tagline} isAdmin={isAdmin} />
+        <DesktopSidebar />
+        <Header storeName={settings.storeName} tagline={settings.tagline} />
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {children}
         </main>
