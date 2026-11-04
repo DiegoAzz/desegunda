@@ -1,49 +1,10 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma } from '@/lib/db';
+import { prisma, saveProductToLocalFile, unmarkProductAsDeleted } from '@/lib/db';
 import { slugify } from '@/lib/format';
 import { ProductType, ProductCondition, ProductStatus } from '@/lib/types';
-import fs from 'fs';
-import path from 'path';
-
-import os from 'os';
 
 export const dynamic = 'force-dynamic';
-
-function saveProductToLocalFile(product: any) {
-  try {
-    const candidateDirs = [
-      process.env.UPLOAD_DIR,
-      path.join(process.cwd(), 'public', 'uploads'),
-      path.join(process.cwd(), 'uploads'),
-      '/app/uploads',
-      path.join(os.tmpdir(), 'lotengo_uploads'),
-    ].filter(Boolean) as string[];
-
-    for (const dir of candidateDirs) {
-      try {
-        if (!fs.existsSync(dir)) {
-          fs.mkdirSync(dir, { recursive: true });
-        }
-        const filePath = path.join(dir, 'custom_products.json');
-        let existing: any[] = [];
-        if (fs.existsSync(filePath)) {
-          try {
-            existing = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
-          } catch {
-            existing = [];
-          }
-        }
-        existing = [product, ...existing.filter((p) => p.id !== product.id && p.slug !== product.slug)];
-        fs.writeFileSync(filePath, JSON.stringify(existing, null, 2), 'utf-8');
-      } catch (dirErr) {
-        // Continuar con el siguiente directorio
-      }
-    }
-  } catch (err) {
-    console.error('Error guardando en archivo local:', err);
-  }
-}
 
 export async function POST(req: NextRequest) {
   try {
@@ -196,6 +157,10 @@ export async function POST(req: NextRequest) {
 
     // Siempre guardar en el archivo local de respaldo persistente para garantizar 100% disponibilidad
     saveProductToLocalFile(productPayload);
+
+    // Asegurar que no esté en la lista de eliminados
+    unmarkProductAsDeleted(productId);
+    unmarkProductAsDeleted(uniqueSlug);
 
     return NextResponse.json({ success: true, product: productPayload, savedInDb: createdInDb });
   } catch (error: any) {

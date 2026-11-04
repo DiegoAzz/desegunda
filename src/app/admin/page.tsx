@@ -1,8 +1,7 @@
 import Link from 'next/link';
-import { prisma } from '@/lib/db';
 import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
-import { INITIAL_PRODUCTS } from '@/lib/initial-data';
+import { getProducts } from '@/lib/db';
 import AdminProductList from './AdminProductList';
 
 export const dynamic = 'force-dynamic';
@@ -13,27 +12,8 @@ export default async function AdminDashboardPage() {
     redirect('/admin/login');
   }
 
-  // Cargar productos con timeout de seguridad para que jamás se quede colgado
-  let products: any[] = [];
-  try {
-    const dbQuery = prisma.product.findMany({
-      include: {
-        images: {
-          orderBy: { sortOrder: 'asc' },
-        },
-      },
-      orderBy: { createdAt: 'desc' },
-    });
-    const timeout = new Promise((_, reject) => setTimeout(() => reject(new Error('Timeout DB')), 2000));
-    products = ((await Promise.race([dbQuery, timeout])) as any[]) || [];
-  } catch (err) {
-    console.warn('Cargando catálogo local en dashboard por timeout de BD...');
-    products = INITIAL_PRODUCTS as any[];
-  }
-
-  if (!products || products.length === 0) {
-    products = INITIAL_PRODUCTS as any[];
-  }
+  // Cargar productos usando el canal unificado (BD + respaldo local - eliminados)
+  const products = await getProducts({ includeUnavailable: true });
 
   // Contadores según PRD: Disponibles, Reservados, Vendidos, Entregados
   const countAvailable = products.filter((p) => p.status === 'AVAILABLE').length;

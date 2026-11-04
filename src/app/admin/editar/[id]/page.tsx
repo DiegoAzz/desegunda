@@ -1,5 +1,5 @@
 import { getSession } from '@/lib/auth';
-import { prisma, getStoreSettings } from '@/lib/db';
+import { prisma, getStoreSettings, loadLocalCustomProducts } from '@/lib/db';
 import { redirect, notFound } from 'next/navigation';
 import ProductForm from '../../ProductForm';
 
@@ -17,17 +17,26 @@ export default async function AdminEditarPage({ params }: AdminEditarPageProps) 
     redirect('/admin/login');
   }
 
-  const [product, settings] = await Promise.all([
-    prisma.product.findUnique({
-      where: { id: params.id },
+  let product: any = null;
+  try {
+    product = await prisma.product.findFirst({
+      where: {
+        OR: [{ id: params.id }, { slug: params.id }],
+      },
       include: {
         images: {
           orderBy: { sortOrder: 'asc' },
         },
       },
-    }),
-    getStoreSettings(),
-  ]);
+    });
+  } catch {}
+
+  if (!product) {
+    const localList = loadLocalCustomProducts();
+    product = localList.find((p) => p.id === params.id || p.slug === params.id) || null;
+  }
+
+  const settings = await getStoreSettings();
 
   if (!product) {
     notFound();

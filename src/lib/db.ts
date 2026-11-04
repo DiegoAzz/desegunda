@@ -140,6 +140,33 @@ export function markProductAsDeleted(idOrSlug: string) {
   }
 }
 
+export function unmarkProductAsDeleted(idOrSlug: string) {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      const filePath = path.join(dir, 'deleted_ids.json');
+      if (fs.existsSync(filePath)) {
+        try {
+          const list = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (Array.isArray(list)) {
+            const filtered = list.filter((id) => id !== idOrSlug);
+            fs.writeFileSync(filePath, JSON.stringify(filtered, null, 2), 'utf-8');
+          }
+        } catch {}
+      }
+    }
+  } catch (err) {
+    console.error('Error desmarcando producto eliminado:', err);
+  }
+}
+
 export function loadDeletedProductIds(): string[] {
   try {
     const candidateDirs = [
@@ -272,10 +299,6 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
       whereClause.status = {
         in: ['AVAILABLE', 'RESERVED'],
       };
-    } else {
-      whereClause.status = {
-        not: 'HIDDEN',
-      };
     }
 
     if (query && query.trim()) {
@@ -327,30 +350,28 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
 
   const deletedIds = loadDeletedProductIds();
 
-  // Unir productos locales creados por el admin con el catálogo base
-  let list = [...localCustom, ...dbProducts];
-
-  // Si no hay ninguno de los dos, usar productos semilla
-  if (list.length === 0) {
-    list = [...INITIAL_PRODUCTS];
-  } else {
-    // Añadir productos semilla que no estén duplicados por slug
-    for (const p of INITIAL_PRODUCTS) {
-      if (!list.some((item) => item.slug === p.slug)) {
-        list.push(p);
-      }
+  // Mapear combinando PostgreSQL y catálogo local sin duplicados
+  const productMap = new Map<string, ProductItem>();
+  for (const p of dbProducts) {
+    productMap.set(p.id, p);
+    if (p.slug) productMap.set(p.slug, p);
+  }
+  for (const p of localCustom) {
+    if (!productMap.has(p.id) && !productMap.has(p.slug)) {
+      productMap.set(p.id, p);
     }
   }
+
+  let list = Array.from(new Set(productMap.values()));
 
   // Filtrar productos eliminados por el administrador
   if (deletedIds.length > 0) {
     list = list.filter((p) => !deletedIds.includes(p.id) && !deletedIds.includes(p.slug));
   }
 
+  // Filtrar solo disponibles para la tienda pública si no se solicita todo
   if (!includeUnavailable) {
     list = list.filter((p) => p.status === 'AVAILABLE' || p.status === 'RESERVED');
-  } else {
-    list = list.filter((p) => p.status !== 'HIDDEN');
   }
 
   if (type) {
@@ -385,7 +406,10 @@ export async function getProductBySlug(slug: string): Promise<ProductItem | null
 
   const localCustom = loadLocalCustomProducts();
   const fromLocal = localCustom.find((p) => p.slug === slug);
-  if (fromLocal && fromLocal.status !== 'HIDDEN') {
+  if (fromLocal) {
+    if (deletedIds.includes(fromLocal.id) || deletedIds.includes(fromLocal.slug)) {
+      return null;
+    }
     return fromLocal;
   }
 
@@ -399,7 +423,10 @@ export async function getProductBySlug(slug: string): Promise<ProductItem | null
       },
     });
 
-    if (item && item.status !== 'HIDDEN') {
+    if (item) {
+      if (deletedIds.includes(item.id) || deletedIds.includes(item.slug)) {
+        return null;
+      }
       return {
         id: item.id,
         slug: item.slug,
@@ -426,9 +453,8 @@ export async function getProductBySlug(slug: string): Promise<ProductItem | null
       };
     }
   } catch {
-    // Fallback si no hay conexión
+    // Continuar si falla PostgreSQL
   }
 
-  const found = INITIAL_PRODUCTS.find((p) => p.slug === slug && p.status !== 'HIDDEN');
-  return found || null;
+  return null;
 }

@@ -1,5 +1,5 @@
 import { NextRequest, NextResponse } from 'next/server';
-import { prisma, getProductBySlug, loadLocalCustomProducts } from '@/lib/db';
+import { prisma, getProductBySlug, loadLocalCustomProducts, loadDeletedProductIds } from '@/lib/db';
 import { INITIAL_PRODUCTS } from '@/lib/initial-data';
 import { createWompiReference, generateWompiSignature } from '@/lib/wompi';
 
@@ -55,15 +55,18 @@ export async function POST(req: NextRequest) {
         ) || null;
     }
 
-    // 4. Fallback a productos semilla iniciales
+    // 4. Fallback a productos semilla iniciales si no han sido eliminados
     if (!product) {
-      product =
-        INITIAL_PRODUCTS.find(
-          (p) =>
-            (slugToFind && p.slug === slugToFind) ||
-            (idToFind && p.id === idToFind) ||
-            (idToFind && p.slug === idToFind)
-        ) || null;
+      const deletedIds = loadDeletedProductIds();
+      const seedFound = INITIAL_PRODUCTS.find(
+        (p) =>
+          (slugToFind && p.slug === slugToFind) ||
+          (idToFind && p.id === idToFind) ||
+          (idToFind && p.slug === idToFind)
+      );
+      if (seedFound && !deletedIds.includes(seedFound.id) && !deletedIds.includes(seedFound.slug)) {
+        product = seedFound;
+      }
     }
 
     if (!product) {

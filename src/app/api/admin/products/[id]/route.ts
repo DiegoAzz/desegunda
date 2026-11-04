@@ -1,6 +1,6 @@
 import { NextRequest, NextResponse } from 'next/server';
 import { getSession } from '@/lib/auth';
-import { prisma, removeProductFromLocalFile, markProductAsDeleted } from '@/lib/db';
+import { prisma, removeProductFromLocalFile, markProductAsDeleted, unmarkProductAsDeleted, saveProductToLocalFile } from '@/lib/db';
 import { ProductType, ProductCondition, ProductStatus } from '@/lib/types';
 
 export const dynamic = 'force-dynamic';
@@ -100,39 +100,101 @@ export async function PUT(
       finalStatus = 'SOLD';
     }
 
-    // Actualizar producto e imágenes
-    await prisma.$transaction(async (tx) => {
-      await tx.product.update({
-        where: { id: params.id },
-        data: {
-          title: title.trim(),
-          description: (description || '').trim(),
-          type: type as ProductType,
-          category: category || 'Otros',
-          condition: finalCondition,
-          damageDetails: finalDamageDetails,
-          priceCop: finalPriceCop,
-          stock: parsedStock,
-          acceptsOffers: finalAcceptsOffers,
-          status: finalStatus,
-          deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+    // 1. Buscar el producto por id o slug
+    let existing: any = null;
+    try {
+      existing = await prisma.product.findFirst({
+        where: {
+          OR: [{ id: params.id }, { slug: params.id }],
         },
       });
+    } catch {}
 
-      if (images && images.length > 0) {
-        await tx.productImage.deleteMany({ where: { productId: params.id } });
-        await tx.productImage.createMany({
-          data: images.map((img: { storagePath: string; altText?: string }, index: number) => ({
-            productId: params.id,
-            storagePath: img.storagePath,
-            sortOrder: index,
-            altText: img.altText || title,
-          })),
+    const targetDbId = existing?.id || params.id;
+
+    // Actualizar producto e imágenes en PostgreSQL
+    try {
+      await prisma.$transaction(async (tx) => {
+        await tx.product.upsert({
+          where: { id: targetDbId },
+          update: {
+            title: title.trim(),
+            description: (description || '').trim(),
+            type: type as ProductType,
+            category: category || 'Otros',
+            condition: finalCondition,
+            damageDetails: finalDamageDetails,
+            priceCop: finalPriceCop,
+            stock: parsedStock,
+            acceptsOffers: finalAcceptsOffers,
+            status: finalStatus,
+            deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+          },
+          create: {
+            id: targetDbId,
+            slug: existing?.slug || params.id,
+            title: title.trim(),
+            description: (description || '').trim(),
+            type: type as ProductType,
+            category: category || 'Otros',
+            condition: finalCondition,
+            damageDetails: finalDamageDetails,
+            priceCop: finalPriceCop,
+            stock: parsedStock,
+            acceptsOffers: finalAcceptsOffers,
+            status: finalStatus,
+            deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+          },
         });
-      }
-    });
 
-    return NextResponse.json({ success: true });
+        if (images && images.length > 0) {
+          await tx.productImage.deleteMany({ where: { productId: targetDbId } });
+          await tx.productImage.createMany({
+            data: images.map((img: { storagePath: string; altText?: string }, index: number) => ({
+              productId: targetDbId,
+              storagePath: img.storagePath,
+              sortOrder: index,
+              altText: img.altText || title,
+            })),
+          });
+        }
+      });
+    } catch (dbErr) {
+      console.warn('Aviso actualizando producto en BD:', dbErr);
+    }
+
+    // Persistir en archivo local híbrido
+    const updatedPayload = {
+      id: targetDbId,
+      slug: existing?.slug || params.id,
+      title: title.trim(),
+      description: (description || '').trim(),
+      type: type as ProductType,
+      category: category || 'Otros',
+      condition: finalCondition,
+      damageDetails: finalDamageDetails,
+      priceCop: finalPriceCop,
+      stock: parsedStock,
+      acceptsOffers: finalAcceptsOffers,
+      status: finalStatus,
+      deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+      updatedAt: new Date().toISOString(),
+      images: images.map((img: any, idx: number) => ({
+        id: `img-${targetDbId}-${idx}`,
+        productId: targetDbId,
+        storagePath: img.storagePath,
+        sortOrder: idx,
+        altText: img.altText || title.trim(),
+      })),
+    };
+    saveProductToLocalFile(updatedPayload);
+
+    // Desmarcar de lista de eliminados si existía
+    unmarkProductAsDeleted(targetDbId);
+    unmarkProductAsDeleted(params.id);
+    if (existing?.slug) unmarkProductAsDeleted(existing.slug);
+
+    return NextResponse.json({ success: true, product: updatedPayload });
   } catch (error) {
     console.error('Error actualizando producto:', error);
     return NextResponse.json({ success: false, error: 'Error al actualizar producto' }, { status: 500 });
@@ -150,11 +212,31 @@ export async function DELETE(
     }
 
     const targetId = params.id;
+    let targetSlug = '';
+    let dbId = targetId;
+
+    try {
+      const prod = await prisma.product.findFirst({
+        where: {
+          OR: [{ id: targetId }, { slug: targetId }],
+        },
+      });
+      if (prod) {
+        dbId = prod.id;
+        targetSlug = prod.slug;
+      }
+    } catch {}
 
     // 1. Eliminar imágenes asociadas en PostgreSQL
     try {
       await prisma.productImage.deleteMany({
-        where: { productId: targetId },
+        where: {
+          OR: [
+            { productId: dbId },
+            { productId: targetId },
+            ...(targetSlug ? [{ product: { slug: targetSlug } }] : []),
+          ],
+        },
       });
     } catch {}
 
@@ -162,7 +244,12 @@ export async function DELETE(
     try {
       await prisma.product.deleteMany({
         where: {
-          OR: [{ id: targetId }, { slug: targetId }],
+          OR: [
+            { id: dbId },
+            { id: targetId },
+            { slug: targetId },
+            ...(targetSlug ? [{ slug: targetSlug }] : []),
+          ],
         },
       });
     } catch (dbErr) {
@@ -171,9 +258,32 @@ export async function DELETE(
 
     // 3. Eliminar de archivo local si existía allí
     removeProductFromLocalFile(targetId);
+    if (dbId !== targetId) removeProductFromLocalFile(dbId);
+    if (targetSlug) removeProductFromLocalFile(targetSlug);
 
-    // 4. Registrar en lista negra de eliminados para que INITIAL_PRODUCTS nunca lo vuelva a mostrar
+    // 4. Registrar en lista negra de eliminados
     markProductAsDeleted(targetId);
+    if (dbId !== targetId) markProductAsDeleted(dbId);
+    if (targetSlug) markProductAsDeleted(targetSlug);
+
+    // 5. Purgar demos completamente si coincide
+    const DEMO_ITEMS = [
+      'audifonos-bluetooth-soundcore-a20-x89k2',
+      'monitor-dell-24-pulgadas-ips-hdmi-m391z',
+      'licuadora-oster-clasica-motor-100-l823a',
+      'coleccion-enciclopedia-y-novelas-g190d',
+      'prod-new-001',
+      'prod-used-002',
+      'prod-used-003',
+      'prod-gift-004',
+      'sample-audifonos-1',
+      'sample-monitor-2',
+      'sample-licuadora-3',
+      'sample-libros-4',
+    ];
+    if (DEMO_ITEMS.includes(targetId) || DEMO_ITEMS.includes(targetSlug)) {
+      DEMO_ITEMS.forEach(markProductAsDeleted);
+    }
 
     return NextResponse.json({ success: true });
   } catch (error) {
