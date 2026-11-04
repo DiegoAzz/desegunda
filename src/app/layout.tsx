@@ -5,6 +5,7 @@ import Footer from '@/components/Footer';
 import SplashScreen from '@/components/SplashScreen';
 import DesktopSidebar from '@/components/DesktopSidebar';
 import { getStoreSettings } from '@/lib/db';
+import { getSession } from '@/lib/auth';
 
 export const viewport: Viewport = {
   width: 'device-width',
@@ -26,18 +27,22 @@ export default async function RootLayout({
 }: {
   children: React.ReactNode;
 }) {
-  const settings = await getStoreSettings();
+  const [settings, session] = await Promise.all([
+    getStoreSettings(),
+    getSession(),
+  ]);
+  const isAdmin = Boolean(session);
 
   return (
     <html lang="es">
       <body className="min-h-screen flex flex-col bg-[#EBEBEB] text-[#333333] antialiased selection:bg-[#FFE600] selection:text-[#2D3277] md:pl-16">
         <SplashScreen />
-        <DesktopSidebar />
-        <Header storeName={settings.storeName} tagline={settings.tagline} />
+        <DesktopSidebar isAdmin={isAdmin} />
+        <Header storeName={settings.storeName} tagline={settings.tagline} isAdmin={isAdmin} />
         <main className="flex-1 w-full max-w-7xl mx-auto px-4 sm:px-6 lg:px-8 py-6">
           {children}
         </main>
-        <Footer />
+        <Footer storeName={settings.storeName} />
       </body>
     </html>
   );

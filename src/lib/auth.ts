@@ -49,7 +49,19 @@ export async function getSession() {
 
 export async function clearSession() {
   const cookieStore = cookies();
-  cookieStore.delete(COOKIE_NAME);
+  try {
+    cookieStore.set(COOKIE_NAME, '', {
+      httpOnly: true,
+      secure: process.env.NODE_ENV === 'production',
+      sameSite: 'lax',
+      path: '/',
+      maxAge: 0,
+      expires: new Date(0),
+    });
+  } catch {}
+  try {
+    cookieStore.delete(COOKIE_NAME);
+  } catch {}
 }
 
 export async function verifyAdminCredentials(email: string, passwordPlain: string) {

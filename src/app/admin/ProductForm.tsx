@@ -4,6 +4,7 @@ import { useState } from 'react';
 import { useRouter } from 'next/navigation';
 import SafeImage from '@/components/SafeImage';
 import Link from 'next/link';
+import LogoutButton from '@/components/LogoutButton';
 import { CATEGORIES, ProductType, ProductCondition, ProductStatus } from '@/lib/types';
 
 interface ProductFormProps {
@@ -164,7 +165,7 @@ export default function ProductForm({
 
   return (
     <div className="space-y-6 max-w-xl mx-auto pb-12">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Link
           href="/admin"
           className="inline-flex items-center space-x-1 text-sm font-bold text-slate-700 bg-white px-3 py-2 rounded-xl border border-slate-300 transition"
@@ -172,9 +173,10 @@ export default function ProductForm({
           <span>←</span>
           <span>VOLVER</span>
         </Link>
-        <h1 className="text-xl font-black text-slate-900">
-          {isEdit ? 'Editar Producto' : 'Publicar Nuevo Producto'}
+        <h1 className="text-xl font-black text-slate-900 truncate">
+          {isEdit ? 'Editar Producto' : 'Publicar Nuevo'}
         </h1>
+        <LogoutButton className="min-h-[38px] px-3 py-1.5 text-xs" label="Salir" />
       </div>
 
       {error && (

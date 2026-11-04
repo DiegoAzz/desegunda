@@ -3,6 +3,7 @@ import { getSession } from '@/lib/auth';
 import { redirect } from 'next/navigation';
 import { getProducts, getStoreSettings } from '@/lib/db';
 import AdminProductList from './AdminProductList';
+import LogoutButton from '@/components/LogoutButton';
 
 export const dynamic = 'force-dynamic';
 
@@ -62,6 +63,8 @@ export default async function AdminDashboardPage() {
           >
             Ver Tienda
           </Link>
+
+          <LogoutButton />
         </div>
       </div>
 

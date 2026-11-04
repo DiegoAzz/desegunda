@@ -3,10 +3,23 @@
 import Link from 'next/link';
 import { usePathname } from 'next/navigation';
 
-export default function DesktopSidebar() {
+interface DesktopSidebarProps {
+  isAdmin?: boolean;
+}
+
+interface NavItem {
+  id: string;
+  label: string;
+  icon: string;
+  href: string;
+  active: boolean;
+  isExternal?: boolean;
+}
+
+export default function DesktopSidebar({ isAdmin = false }: DesktopSidebarProps) {
   const pathname = usePathname();
 
-  const navItems = [
+  const customerItems: NavItem[] = [
     {
       id: 'home',
       label: 'Inicio',
@@ -43,10 +56,13 @@ export default function DesktopSidebar() {
       isExternal: true,
       active: false,
     },
+  ];
+
+  const adminItems: NavItem[] = [
     {
       id: 'admin',
-      label: 'Panel Administrativo',
-      icon: '👤',
+      label: 'Mis Productos (Admin)',
+      icon: '📦',
       href: '/admin',
       active: pathname.startsWith('/admin') && pathname !== '/admin/ajustes',
     },
@@ -59,6 +75,8 @@ export default function DesktopSidebar() {
     },
   ];
 
+  const navItems = isAdmin ? [...customerItems, ...adminItems] : customerItems;
+
   const handleSearchFocus = () => {
     const searchInput = document.querySelector('input[type="search"]') as HTMLInputElement | null;
     if (searchInput) {
@@ -67,6 +85,13 @@ export default function DesktopSidebar() {
     } else {
       window.location.href = '/';
     }
+  };
+
+  const handleLogout = async () => {
+    try {
+      await fetch('/api/auth/logout', { method: 'POST' });
+    } catch {}
+    window.location.href = '/admin/login';
   };
 
   return (
@@ -79,7 +104,7 @@ export default function DesktopSidebar() {
         <Link
           href="/"
           className="w-10 h-10 rounded-xl bg-[#FFE600] flex items-center justify-center text-xl shadow-xs hover:scale-105 transition-transform"
-          title="LO TENGO — Inicio"
+          title="DE SEGUNDA — Inicio"
         >
           <span role="img" aria-label="Logo">♻️</span>
         </Link>
@@ -122,8 +147,8 @@ export default function DesktopSidebar() {
         </nav>
       </div>
 
-      {/* Bottom: Botón de Búsqueda Rápida */}
-      <div className="flex flex-col items-center space-y-2 w-full px-2">
+      {/* Bottom: Botón de Búsqueda y Cerrar Sesión si es Admin */}
+      <div className="flex flex-col items-center space-y-3 w-full px-2">
         <button
           type="button"
           onClick={handleSearchFocus}
@@ -135,6 +160,20 @@ export default function DesktopSidebar() {
             Buscar
           </span>
         </button>
+
+        {isAdmin && (
+          <button
+            type="button"
+            onClick={handleLogout}
+            className="relative group w-11 h-11 rounded-xl flex items-center justify-center text-xl text-rose-600 hover:bg-rose-50 hover:text-rose-800 transition-all cursor-pointer"
+            title="Cerrar sesión de administrador"
+          >
+            <span>🚪</span>
+            <span className="absolute left-14 opacity-0 group-hover:opacity-100 invisible group-hover:visible bg-rose-900 text-white text-xs font-bold py-1.5 px-3 rounded-xl shadow-xl whitespace-nowrap transition-all duration-150 z-50 pointer-events-none">
+              Cerrar Sesión
+            </span>
+          </button>
+        )}
       </div>
     </aside>
   );

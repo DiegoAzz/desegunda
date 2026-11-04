@@ -1,12 +1,16 @@
 import Link from 'next/link';
 
-export default function Footer() {
+interface FooterProps {
+  storeName?: string;
+}
+
+export default function Footer({ storeName = 'DE SEGUNDA' }: FooterProps) {
   return (
     <footer className="bg-white border-t border-slate-300/70 mt-12 py-8 text-center text-slate-600">
       <div className="max-w-2xl mx-auto px-4 space-y-3">
         <div className="text-xl font-black text-[#2D3277] flex items-center justify-center space-x-1.5">
           <span>♻️</span>
-          <span>LO TENGO</span>
+          <span>{storeName}</span>
         </div>
         <p className="text-sm">
           Tienda personal. Todos los artículos son de mi propiedad personal.
@@ -18,7 +22,7 @@ export default function Footer() {
         </p>
         <div className="pt-2">
           <Link href="/admin" className="text-xs text-slate-400 hover:text-slate-600 underline">
-            Panel de Administración
+            Acceso Administración
           </Link>
         </div>
       </div>

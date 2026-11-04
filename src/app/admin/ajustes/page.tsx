@@ -3,6 +3,7 @@
 import { useState, useEffect } from 'react';
 import Link from 'next/link';
 import { useRouter } from 'next/navigation';
+import LogoutButton from '@/components/LogoutButton';
 
 export default function AdminSettingsPage() {
   const router = useRouter();
@@ -79,7 +80,7 @@ export default function AdminSettingsPage() {
 
   return (
     <div className="max-w-md mx-auto space-y-6 pb-12">
-      <div className="flex items-center justify-between">
+      <div className="flex items-center justify-between gap-2">
         <Link
           href="/admin"
           className="inline-flex items-center space-x-1 text-sm font-bold text-slate-700 bg-white px-3 py-2 rounded-xl border border-slate-300 transition"
@@ -87,7 +88,8 @@ export default function AdminSettingsPage() {
           <span>←</span>
           <span>VOLVER</span>
         </Link>
-        <h1 className="text-xl font-black text-slate-900">Ajustes de la Tienda</h1>
+        <h1 className="text-xl font-black text-slate-900">Ajustes</h1>
+        <LogoutButton className="min-h-[38px] px-3 py-1.5 text-xs" label="Salir" />
       </div>
 
       {saved && (
@@ -180,14 +182,8 @@ export default function AdminSettingsPage() {
       </form>
 
       {/* Cerrar sesión */}
-      <div className="bg-white rounded-3xl p-4 border border-slate-200 text-center">
-        <button
-          onClick={handleLogout}
-          type="button"
-          className="text-xs font-bold text-rose-600 hover:text-rose-800 py-2 px-4 transition"
-        >
-          Cerrar Sesión del Administrador
-        </button>
+      <div className="bg-white rounded-3xl p-4 border border-slate-200 flex justify-center">
+        <LogoutButton className="w-full justify-center" label="Cerrar Sesión del Administrador" />
       </div>
     </div>
   );
