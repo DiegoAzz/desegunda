@@ -165,10 +165,61 @@ export function loadDeletedProductIds(): string[] {
   return [];
 }
 
+export function loadLocalStoreSettings(): StoreSettingsItem | null {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      const filePath = path.join(dir, 'custom_settings.json');
+      if (fs.existsSync(filePath)) {
+        try {
+          const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (data && data.storeName) {
+            return data;
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+  return null;
+}
+
+export function saveStoreSettingsToLocalFile(settings: StoreSettingsItem) {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        const filePath = path.join(dir, 'custom_settings.json');
+        fs.writeFileSync(filePath, JSON.stringify(settings, null, 2), 'utf-8');
+      } catch {}
+    }
+  } catch (err) {
+    console.error('Error guardando ajustes en archivo local:', err);
+  }
+}
+
 /**
  * Obtiene los ajustes de la tienda
  */
 export async function getStoreSettings(): Promise<StoreSettingsItem> {
+  const localSettings = loadLocalStoreSettings();
+
   try {
     const settings = await prisma.storeSettings.findUnique({
       where: { id: 'default' },
@@ -184,9 +235,10 @@ export async function getStoreSettings(): Promise<StoreSettingsItem> {
       };
     }
   } catch {
-    // Usar datos iniciales si la BD no está disponible
+    // Usar datos locales si la BD no está disponible
   }
-  return INITIAL_STORE_SETTINGS;
+
+  return localSettings || INITIAL_STORE_SETTINGS;
 }
 
 export interface GetProductsFilter {

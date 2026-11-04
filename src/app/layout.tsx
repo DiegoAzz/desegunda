@@ -3,6 +3,7 @@ import './globals.css';
 import Header from '@/components/Header';
 import Footer from '@/components/Footer';
 import SplashScreen from '@/components/SplashScreen';
+import DesktopSidebar from '@/components/DesktopSidebar';
 import { getStoreSettings } from '@/lib/db';
 
 export const viewport: Viewport = {
@@ -29,8 +30,9 @@ export default async function RootLayout({
 
   return (
     <html lang="es">
-      <body className="min-h-screen flex flex-col bg-[#EBEBEB] text-[#333333] antialiased selection:bg-[#FFE600] selection:text-[#2D3277]">
+      <body className="min-h-screen flex flex-col bg-[#EBEBEB] text-[#333333] antialiased selection:bg-[#FFE600] selection:text-[#2D3277] md:pl-16">
         <SplashScreen />
+        <DesktopSidebar />
         <Header storeName={settings.storeName} tagline={settings.tagline} />
         <main className="flex-1 w-full max-w-2xl mx-auto px-4 py-6">
           {children}

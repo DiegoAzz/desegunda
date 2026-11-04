@@ -11,8 +11,32 @@ export default function AdminSettingsPage() {
   const [whatsappNumber, setWhatsappNumber] = useState('3137751715');
   const [defaultDeliveryArea, setDefaultDeliveryArea] = useState('Bogotá, Colombia');
   const [loading, setLoading] = useState(false);
+  const [fetching, setFetching] = useState(true);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
+
+  // Cargar ajustes actuales desde el backend al abrir la página
+  useEffect(() => {
+    async function fetchSettings() {
+      try {
+        const res = await fetch('/api/admin/settings');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && data.settings) {
+            setStoreName(data.settings.storeName || 'LO TENGO');
+            setTagline(data.settings.tagline || 'Cosas buenas para alguien más.');
+            setWhatsappNumber(data.settings.whatsappNumber || '3137751715');
+            setDefaultDeliveryArea(data.settings.defaultDeliveryArea || 'Bogotá, Colombia');
+          }
+        }
+      } catch (err) {
+        console.warn('No se pudieron cargar los ajustes del servidor:', err);
+      } finally {
+        setFetching(false);
+      }
+    }
+    fetchSettings();
+  }, []);
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -25,23 +49,23 @@ export default function AdminSettingsPage() {
         method: 'PUT',
         headers: { 'Content-Type': 'application/json' },
         body: JSON.stringify({
-          storeName,
-          tagline,
-          whatsappNumber,
-          defaultDeliveryArea,
+          storeName: storeName.trim(),
+          tagline: tagline.trim(),
+          whatsappNumber: whatsappNumber.trim(),
+          defaultDeliveryArea: defaultDeliveryArea.trim(),
         }),
       });
 
       const data = await res.json();
       if (res.ok && data.success) {
         setSaved(true);
-        setTimeout(() => setSaved(false), 3000);
+        setTimeout(() => setSaved(false), 4000);
         router.refresh();
       } else {
         setError(data.error || 'Error al guardar los ajustes');
       }
     } catch {
-      setError('Error de conexión');
+      setError('Error de conexión al guardar los ajustes');
     } finally {
       setLoading(false);
     }
@@ -67,28 +91,36 @@ export default function AdminSettingsPage() {
       </div>
 
       {saved && (
-        <div className="bg-green-50 border border-green-200 text-green-800 text-sm p-3 rounded-xl font-bold">
-          ✓ Ajustes guardados correctamente
+        <div className="bg-emerald-50 border border-emerald-300 text-emerald-900 text-sm p-4 rounded-2xl font-bold shadow-xs flex items-center space-x-2 animate-in fade-in">
+          <span className="text-lg">✓</span>
+          <span>¡Ajustes guardados correctamente! El nuevo nombre ya está activo en tu tienda.</span>
         </div>
       )}
 
       {error && (
-        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-sm p-3 rounded-xl font-bold">
-          ⚠️ {error}
+        <div className="bg-rose-50 border border-rose-200 text-rose-800 text-sm p-3.5 rounded-2xl font-bold flex items-center space-x-2">
+          <span>⚠️</span>
+          <span>{error}</span>
         </div>
       )}
 
       <form onSubmit={handleSubmit} className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+        {fetching && (
+          <p className="text-xs text-slate-400 font-medium">Cargando ajustes actuales...</p>
+        )}
+
         <div>
           <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-            Nombre de la Tienda
+            Nombre de la Tienda *
           </label>
           <input
             type="text"
             required
             value={storeName}
             onChange={(e) => setStoreName(e.target.value)}
-            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-bold text-slate-900"
+            disabled={loading}
+            placeholder="Ej: LO TENGO"
+            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-bold text-slate-900 disabled:opacity-50"
           />
         </div>
 
@@ -98,27 +130,29 @@ export default function AdminSettingsPage() {
           </label>
           <input
             type="text"
-            required
             value={tagline}
             onChange={(e) => setTagline(e.target.value)}
-            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-medium text-slate-900 text-sm"
+            disabled={loading}
+            placeholder="Ej: Cosas buenas para alguien más."
+            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-medium text-slate-800 disabled:opacity-50"
           />
         </div>
 
         <div>
           <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-            Número de WhatsApp
+            Número de WhatsApp *
           </label>
           <input
-            type="text"
+            type="tel"
             required
             value={whatsappNumber}
             onChange={(e) => setWhatsappNumber(e.target.value)}
-            placeholder="3137751715"
-            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-bold text-slate-900"
+            disabled={loading}
+            placeholder="Ej: 3137751715"
+            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-bold text-slate-900 disabled:opacity-50"
           />
           <p className="text-xs text-slate-400 mt-1">
-            Se normaliza automáticamente a <code>573137751715</code> para wa.me.
+            Se normaliza automáticamente a formato internacional para WhatsApp.
           </p>
         </div>
 
@@ -128,27 +162,29 @@ export default function AdminSettingsPage() {
           </label>
           <input
             type="text"
-            required
             value={defaultDeliveryArea}
             onChange={(e) => setDefaultDeliveryArea(e.target.value)}
-            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-medium text-slate-900 text-sm"
+            disabled={loading}
+            placeholder="Ej: Bogotá, Colombia (Zona Norte)"
+            className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-medium text-slate-800 disabled:opacity-50"
           />
         </div>
 
         <button
           type="submit"
           disabled={loading}
-          className="w-full min-h-[56px] bg-green-600 hover:bg-green-700 text-white rounded-2xl font-black text-lg transition shadow-sm active:scale-[0.98] disabled:opacity-50"
+          className="w-full min-h-[52px] bg-green-600 hover:bg-green-700 text-white font-black text-lg rounded-2xl shadow-md transition-all active:scale-[0.99] disabled:opacity-70 mt-2"
         >
-          {loading ? 'Guardando...' : 'GUARDAR AJUSTES'}
+          {loading ? 'Guardando ajustes...' : 'GUARDAR AJUSTES'}
         </button>
       </form>
 
+      {/* Cerrar sesión */}
       <div className="bg-white rounded-3xl p-4 border border-slate-200 text-center">
         <button
-          type="button"
           onClick={handleLogout}
-          className="text-sm font-bold text-rose-600 hover:text-rose-800 transition"
+          type="button"
+          className="text-xs font-bold text-rose-600 hover:text-rose-800 py-2 px-4 transition"
         >
           Cerrar Sesión del Administrador
         </button>
