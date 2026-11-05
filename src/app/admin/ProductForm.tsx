@@ -36,14 +36,76 @@ export default function ProductForm({
   );
 
   const [uploading, setUploading] = useState(false);
+  const [uploadProgress, setUploadProgress] = useState('');
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Función para comprimir en el navegador antes de enviar (para celular o conexiones lentas)
+  const compressImageInBrowser = async (file: File): Promise<Blob | File> => {
+    // Si no es imagen o el entorno no soporta canvas, enviar tal cual
+    if (!file.type.startsWith('image/') || typeof window === 'undefined') {
+      return file;
+    }
+
+    return new Promise((resolve) => {
+      const img = new Image();
+      const objectUrl = URL.createObjectURL(file);
+
+      img.onload = () => {
+        URL.revokeObjectURL(objectUrl);
+        const MAX_DIM = 1200;
+        let width = img.width;
+        let height = img.height;
+
+        if (width > MAX_DIM || height > MAX_DIM) {
+          if (width > height) {
+            height = Math.round((height * MAX_DIM) / width);
+            width = MAX_DIM;
+          } else {
+            width = Math.round((width * MAX_DIM) / height);
+            height = MAX_DIM;
+          }
+        }
+
+        const canvas = document.createElement('canvas');
+        canvas.width = width;
+        canvas.height = height;
+        const ctx = canvas.getContext('2d');
+        if (!ctx) {
+          resolve(file);
+          return;
+        }
+
+        ctx.drawImage(img, 0, 0, width, height);
+        canvas.toBlob(
+          (blob) => {
+            if (blob && blob.size < file.size) {
+              resolve(blob);
+            } else {
+              resolve(file);
+            }
+          },
+          'image/jpeg',
+          0.82
+        );
+      };
+
+      img.onerror = () => {
+        URL.revokeObjectURL(objectUrl);
+        resolve(file);
+      };
+
+      img.src = objectUrl;
+    });
+  };
 
   const handlePhotoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
     if (!e.target.files || e.target.files.length === 0) return;
 
-    if (images.length + e.target.files.length > 5) {
-      alert('Máximo 5 fotos por artículo');
+    const selectedFiles = Array.from(e.target.files);
+    if (images.length + selectedFiles.length > 5) {
+      alert(`Máximo 5 fotos por artículo. Ya tienes ${images.length} y seleccionaste ${selectedFiles.length}.`);
+      e.target.value = '';
       return;
     }
 
@@ -51,34 +113,56 @@ export default function ProductForm({
     setError('');
 
     try {
-      for (const file of Array.from(e.target.files)) {
+      let count = 0;
+      for (const file of selectedFiles) {
+        count++;
+        setUploadProgress(`Procesando foto ${count} de ${selectedFiles.length}...`);
+
         const localBlobUrl = URL.createObjectURL(file);
+        
+        // Optimizar localmente antes de enviar para subida ultrarrápida
+        const optimizedBlob = await compressImageInBrowser(file);
         const formData = new FormData();
-        formData.append('file', file);
+        formData.append('file', optimizedBlob, file.name || `foto-${Date.now()}.jpg`);
 
-        const res = await fetch('/api/admin/upload', {
-          method: 'POST',
-          body: formData,
-        });
+        const controller = new AbortController();
+        const timeoutId = setTimeout(() => controller.abort(), 25000); // 25s timeout
 
-        const data = await res.json();
-        if (res.ok && data.success) {
-          setImages((prev) => [
-            ...prev,
-            {
-              storagePath: data.url,
-              previewUrl: localBlobUrl,
-              altText: title || 'Foto de producto',
-            },
-          ]);
-        } else {
-          setError(data.error || 'Error subiendo la foto');
+        try {
+          const res = await fetch('/api/admin/upload', {
+            method: 'POST',
+            body: formData,
+            signal: controller.signal,
+          });
+          clearTimeout(timeoutId);
+
+          const data = await res.json();
+          if (res.ok && data.success) {
+            setImages((prev) => [
+              ...prev,
+              {
+                storagePath: data.url,
+                previewUrl: localBlobUrl,
+                altText: title || 'Foto de producto',
+              },
+            ]);
+          } else {
+            setError(data.error || 'Error subiendo la foto');
+          }
+        } catch (fetchErr: any) {
+          clearTimeout(timeoutId);
+          if (fetchErr.name === 'AbortError') {
+            setError('Tiempo de espera agotado al subir la foto. Intenta con una imagen más liviana.');
+          } else {
+            setError('Error al conectar con el servidor de subidas');
+          }
         }
       }
     } catch {
-      setError('Error al conectar con el servidor de subidas');
+      setError('Error al procesar las fotografías');
     } finally {
       setUploading(false);
+      setUploadProgress('');
       e.target.value = '';
     }
   };
@@ -253,24 +337,49 @@ export default function ProductForm({
             ))}
 
             {images.length < 5 && (
-              <label className="aspect-square rounded-xl border-2 border-dashed border-slate-300 hover:border-green-600 bg-slate-50 hover:bg-green-50 flex flex-col items-center justify-center cursor-pointer transition text-slate-500 hover:text-green-700 p-2 text-center">
-                <span className="text-2xl">📸</span>
-                <span className="text-xs font-bold mt-1">
-                  {uploading ? 'Subiendo...' : '+ Foto'}
-                </span>
-                <input
-                  type="file"
-                  accept="image/jpeg,image/png,image/webp"
-                  multiple
-                  onChange={handlePhotoUpload}
-                  disabled={uploading}
-                  className="hidden"
-                />
-              </label>
+              <>
+                <label className="aspect-square rounded-xl border-2 border-dashed border-amber-300 hover:border-amber-500 bg-amber-50/50 hover:bg-amber-50 flex flex-col items-center justify-center cursor-pointer transition text-amber-700 p-2 text-center group">
+                  <span className="text-2xl group-hover:scale-110 transition-transform">📸</span>
+                  <span className="text-[11px] font-black mt-1 leading-tight">
+                    {uploading ? '...' : 'Tomar Foto'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    capture="environment"
+                    onChange={handlePhotoUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+
+                <label className="aspect-square rounded-xl border-2 border-dashed border-blue-300 hover:border-blue-500 bg-blue-50/50 hover:bg-blue-50 flex flex-col items-center justify-center cursor-pointer transition text-blue-700 p-2 text-center group">
+                  <span className="text-2xl group-hover:scale-110 transition-transform">📁</span>
+                  <span className="text-[11px] font-black mt-1 leading-tight">
+                    {uploading ? '...' : 'Galería'}
+                  </span>
+                  <input
+                    type="file"
+                    accept="image/*"
+                    multiple
+                    onChange={handlePhotoUpload}
+                    disabled={uploading}
+                    className="hidden"
+                  />
+                </label>
+              </>
             )}
           </div>
-          <p className="text-xs text-slate-400">
-            Carga fotos desde tu cámara o galería. Se optimizan automáticamente con Sharp.
+
+          {uploading && (
+            <div className="flex items-center gap-2 p-2.5 my-2 bg-blue-50 border border-blue-200 rounded-xl text-blue-700 text-xs font-bold animate-pulse">
+              <span className="animate-spin text-sm">⏳</span>
+              <span>{uploadProgress || 'Procesando y subiendo fotos de alta velocidad...'}</span>
+            </div>
+          )}
+
+          <p className="text-xs text-slate-500">
+            Puedes tomar fotos directas con tu cámara 📸 o elegir varias desde tu galería 📁. Se optimizan automáticamente al instante.
           </p>
         </div>
 

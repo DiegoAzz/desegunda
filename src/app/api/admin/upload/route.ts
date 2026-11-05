@@ -8,8 +8,8 @@ import crypto from 'crypto';
 
 export const dynamic = 'force-dynamic';
 
-const MAX_FILE_SIZE = 6 * 1024 * 1024; // 6 MB
-const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp'];
+const MAX_FILE_SIZE = 15 * 1024 * 1024; // 15 MB para fotos de celulares de alta resolución
+const ALLOWED_MIME_TYPES = ['image/jpeg', 'image/png', 'image/webp', 'image/heic', 'image/heif'];
 
 export async function POST(req: NextRequest) {
   try {
@@ -27,14 +27,14 @@ export async function POST(req: NextRequest) {
 
     if (file.size > MAX_FILE_SIZE) {
       return NextResponse.json(
-        { success: false, error: 'La imagen excede el límite de 6 MB' },
+        { success: false, error: 'La imagen excede el límite permitido (15 MB)' },
         { status: 400 }
       );
     }
 
-    if (!ALLOWED_MIME_TYPES.includes(file.type)) {
+    if (file.type && !ALLOWED_MIME_TYPES.includes(file.type)) {
       return NextResponse.json(
-        { success: false, error: 'Formato no permitido. Solo se aceptan JPEG, PNG y WebP' },
+        { success: false, error: 'Formato no permitido. Solo se aceptan imágenes JPEG, PNG o WebP' },
         { status: 400 }
       );
     }
@@ -43,7 +43,7 @@ export async function POST(req: NextRequest) {
 
     // Validar tipo real con Sharp (previene archivos maliciosos renombrados)
     const metadata = await sharp(buffer).metadata();
-    if (!metadata.format || !['jpeg', 'png', 'webp'].includes(metadata.format)) {
+    if (!metadata.format || !['jpeg', 'png', 'webp', 'heif', 'tiff'].includes(metadata.format)) {
       return NextResponse.json(
         { success: false, error: 'El archivo no es una imagen válida' },
         { status: 400 }
@@ -51,10 +51,11 @@ export async function POST(req: NextRequest) {
     }
 
     // Comprimir a WebP de alta definición y peso ultra-liviano (30KB-70KB)
+    // effort: 1 para compresión instantánea en milisegundos sin sobrecargar el servidor
     const processedBuffer = await sharp(buffer)
       .rotate() // Respeta orientación EXIF de celulares
       .resize({ width: 1200, height: 1200, fit: 'inside', withoutEnlargement: true })
-      .webp({ quality: 78, effort: 4 })
+      .webp({ quality: 80, effort: 1 })
       .toBuffer();
 
     // Data URI Base64: garantía 100% permanente de que nunca se perderá en reinicios de contenedores
