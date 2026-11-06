@@ -7,37 +7,118 @@ import LogoutButton from '@/components/LogoutButton';
 
 export default function AdminSettingsPage() {
   const router = useRouter();
-  const [storeName, setStoreName] = useState('LO TENGO');
+  const [storeName, setStoreName] = useState('DE SEGUNDA');
   const [tagline, setTagline] = useState('Cosas buenas para alguien más.');
   const [whatsappNumber, setWhatsappNumber] = useState('3137751715');
-  const [defaultDeliveryArea, setDefaultDeliveryArea] = useState('Bogotá, Colombia');
+  const [defaultDeliveryArea, setDefaultDeliveryArea] = useState('Cartagena de Indias');
   const [loading, setLoading] = useState(false);
   const [fetching, setFetching] = useState(true);
   const [saved, setSaved] = useState(false);
   const [error, setError] = useState('');
 
-  // Cargar ajustes actuales desde el backend al abrir la página
+  // Estados para el módulo de categorías
+  const [categories, setCategories] = useState<string[]>([]);
+  const [newCatInput, setNewCatInput] = useState('');
+  const [catSaving, setCatSaving] = useState(false);
+  const [catNotice, setCatNotice] = useState('');
+
+  // Cargar ajustes y categorías actuales desde el backend al abrir la página
   useEffect(() => {
-    async function fetchSettings() {
+    async function fetchData() {
       try {
-        const res = await fetch('/api/admin/settings');
-        if (res.ok) {
-          const data = await res.json();
+        const [resSettings, resCategories] = await Promise.all([
+          fetch('/api/admin/settings'),
+          fetch('/api/admin/categories'),
+        ]);
+
+        if (resSettings.ok) {
+          const data = await resSettings.json();
           if (data.success && data.settings) {
-            setStoreName(data.settings.storeName || 'LO TENGO');
+            setStoreName(data.settings.storeName || 'DE SEGUNDA');
             setTagline(data.settings.tagline || 'Cosas buenas para alguien más.');
             setWhatsappNumber(data.settings.whatsappNumber || '3137751715');
-            setDefaultDeliveryArea(data.settings.defaultDeliveryArea || 'Bogotá, Colombia');
+            setDefaultDeliveryArea(data.settings.defaultDeliveryArea || 'Cartagena de Indias');
+          }
+        }
+
+        if (resCategories.ok) {
+          const catData = await resCategories.json();
+          if (catData.success && Array.isArray(catData.categories)) {
+            setCategories(catData.categories);
           }
         }
       } catch (err) {
-        console.warn('No se pudieron cargar los ajustes del servidor:', err);
+        console.warn('No se pudieron cargar datos del servidor:', err);
       } finally {
         setFetching(false);
       }
     }
-    fetchSettings();
+    fetchData();
   }, []);
+
+  const handleAddCategory = async (e: React.FormEvent) => {
+    e.preventDefault();
+    const trimmed = newCatInput.trim();
+    if (!trimmed) return;
+
+    if (categories.some((c) => c.toLowerCase() === trimmed.toLowerCase())) {
+      setCatNotice('Esa categoría ya existe en la lista');
+      setTimeout(() => setCatNotice(''), 3000);
+      return;
+    }
+
+    setCatSaving(true);
+    setCatNotice('');
+
+    try {
+      const res = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ category: trimmed }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCategories(data.categories);
+        setNewCatInput('');
+        setCatNotice('✓ Categoría agregada con éxito');
+        setTimeout(() => setCatNotice(''), 3000);
+      } else {
+        setCatNotice(data.error || 'Error al agregar categoría');
+      }
+    } catch {
+      setCatNotice('Error de conexión al agregar categoría');
+    } finally {
+      setCatSaving(false);
+    }
+  };
+
+  const handleRemoveCategory = async (catToRemove: string) => {
+    if (categories.length <= 1) {
+      alert('Debes conservar al menos una categoría en la tienda.');
+      return;
+    }
+
+    const updated = categories.filter((c) => c !== catToRemove);
+    setCatSaving(true);
+
+    try {
+      const res = await fetch('/api/admin/categories', {
+        method: 'POST',
+        headers: { 'Content-Type': 'application/json' },
+        body: JSON.stringify({ categories: updated }),
+      });
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setCategories(data.categories);
+        setCatNotice(`✓ Se eliminó «${catToRemove}»`);
+        setTimeout(() => setCatNotice(''), 3000);
+      }
+    } catch {
+      setCatNotice('Error al eliminar categoría');
+    } finally {
+      setCatSaving(false);
+    }
+  };
 
   const handleSubmit = async (e: React.FormEvent) => {
     e.preventDefault();
@@ -167,7 +248,7 @@ export default function AdminSettingsPage() {
             value={defaultDeliveryArea}
             onChange={(e) => setDefaultDeliveryArea(e.target.value)}
             disabled={loading}
-            placeholder="Ej: Bogotá, Colombia (Zona Norte)"
+            placeholder="Ej: Cartagena de Indias"
             className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-medium text-slate-800 disabled:opacity-50"
           />
         </div>
@@ -180,6 +261,65 @@ export default function AdminSettingsPage() {
           {loading ? 'Guardando ajustes...' : 'GUARDAR AJUSTES'}
         </button>
       </form>
+
+      {/* Módulo Editable de Categorías de la Tienda */}
+      <div id="categorias" className="bg-white rounded-3xl p-6 border border-slate-200 shadow-sm space-y-4">
+        <div>
+          <h2 className="font-black text-slate-900 text-base flex items-center space-x-2">
+            <span>🏷️</span>
+            <span>Módulo de Categorías de la Tienda</span>
+          </h2>
+          <p className="text-xs text-slate-500 mt-0.5">
+            Agrega o elimina categorías para tus productos y servicios digitales. Se actualizan automáticamente en los formularios de publicación.
+          </p>
+        </div>
+
+        {catNotice && (
+          <div className="bg-blue-50 border border-blue-200 text-blue-900 text-xs p-3 rounded-xl font-bold animate-in fade-in">
+            {catNotice}
+          </div>
+        )}
+
+        {/* Lista de Categorías actuales */}
+        <div className="flex flex-wrap gap-2 pt-1">
+          {categories.map((cat) => (
+            <div
+              key={cat}
+              className="inline-flex items-center space-x-1.5 px-3 py-1.5 rounded-full text-xs font-bold bg-slate-100 text-slate-800 border border-slate-200 group hover:border-rose-300 transition"
+            >
+              <span>{cat}</span>
+              <button
+                type="button"
+                onClick={() => handleRemoveCategory(cat)}
+                disabled={catSaving}
+                title={`Eliminar categoría ${cat}`}
+                className="text-slate-400 hover:text-rose-600 font-black ml-1 text-sm rounded-full w-4 h-4 flex items-center justify-center"
+              >
+                ✕
+              </button>
+            </div>
+          ))}
+        </div>
+
+        {/* Formulario para agregar nueva categoría */}
+        <form onSubmit={handleAddCategory} className="flex gap-2 pt-2">
+          <input
+            type="text"
+            value={newCatInput}
+            onChange={(e) => setNewCatInput(e.target.value)}
+            disabled={catSaving}
+            placeholder="Nueva categoría (ej: Diseño Web, Calzado...)"
+            className="flex-1 min-h-[44px] px-3.5 rounded-xl border border-slate-300 focus:border-blue-600 text-xs font-bold text-slate-900 placeholder-slate-400"
+          />
+          <button
+            type="submit"
+            disabled={catSaving || !newCatInput.trim()}
+            className="px-4 bg-slate-900 hover:bg-slate-800 text-white rounded-xl text-xs font-black transition disabled:opacity-50 shrink-0"
+          >
+            {catSaving ? '...' : '+ AGREGAR'}
+          </button>
+        </form>
+      </div>
 
       {/* Gestión de Usuarios */}
       <div className="bg-white rounded-3xl p-5 border border-slate-200 shadow-xs flex items-center justify-between gap-3">

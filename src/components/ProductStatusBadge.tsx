@@ -76,6 +76,16 @@ export function ProductTypeBadge({ type, condition, className = '' }: ProductTyp
     );
   }
 
+  if (type === 'DIGITAL') {
+    return (
+      <span
+        className={`inline-flex items-center px-2.5 py-1 rounded-full text-xs font-black bg-indigo-600 text-white shadow-xs ${className}`}
+      >
+        💻 DIGITAL
+      </span>
+    );
+  }
+
   // USED
   if (condition === 'DAMAGED') {
     return (

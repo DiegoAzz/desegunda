@@ -1,6 +1,6 @@
 'use client';
 
-import { useState } from 'react';
+import { useState, useEffect } from 'react';
 import { useRouter } from 'next/navigation';
 import SafeImage from '@/components/SafeImage';
 import Link from 'next/link';
@@ -15,7 +15,7 @@ interface ProductFormProps {
 
 export default function ProductForm({
   initialData,
-  defaultDeliveryArea = 'Bogotá, Colombia',
+  defaultDeliveryArea = 'Cartagena de Indias',
   isEdit = false,
 }: ProductFormProps) {
   const router = useRouter();
@@ -23,6 +23,7 @@ export default function ProductForm({
   const [type, setType] = useState<ProductType>(initialData?.type || 'USED');
   const [title, setTitle] = useState(initialData?.title || '');
   const [category, setCategory] = useState(initialData?.category || 'Otros');
+  const [categoriesList, setCategoriesList] = useState<string[]>([...CATEGORIES]);
   const [description, setDescription] = useState(initialData?.description || '');
   const [condition, setCondition] = useState<ProductCondition>(initialData?.condition || 'GOOD');
   const [damageDetails, setDamageDetails] = useState(initialData?.damageDetails || '');
@@ -31,14 +32,37 @@ export default function ProductForm({
   const [productStatus, setProductStatus] = useState<ProductStatus>(initialData?.status || 'AVAILABLE');
   const [acceptsOffers, setAcceptsOffers] = useState(initialData?.acceptsOffers ?? false);
   const [deliveryArea, setDeliveryArea] = useState(initialData?.deliveryArea || defaultDeliveryArea);
+  const [videoUrl, setVideoUrl] = useState(initialData?.videoUrl || '');
+  const [allowWompiPayment, setAllowWompiPayment] = useState<boolean>(
+    initialData?.allowWompiPayment !== undefined
+      ? Boolean(initialData.allowWompiPayment)
+      : (initialData?.type === 'DIGITAL' ? false : true)
+  );
   const [images, setImages] = useState<Array<{ storagePath: string; altText?: string; previewUrl?: string }>>(
     initialData?.images?.map((img: any) => ({ storagePath: img.storagePath, altText: img.altText, previewUrl: img.storagePath })) || []
   );
 
   const [uploading, setUploading] = useState(false);
   const [uploadProgress, setUploadProgress] = useState('');
+  const [videoUploading, setVideoUploading] = useState(false);
   const [submitting, setSubmitting] = useState(false);
   const [error, setError] = useState('');
+
+  // Cargar categorías dinámicas configuradas en el administrador
+  useEffect(() => {
+    async function fetchCategories() {
+      try {
+        const res = await fetch('/api/admin/categories');
+        if (res.ok) {
+          const data = await res.json();
+          if (data.success && Array.isArray(data.categories) && data.categories.length > 0) {
+            setCategoriesList(data.categories);
+          }
+        }
+      } catch {}
+    }
+    fetchCategories();
+  }, []);
 
   // Función para comprimir en el navegador antes de enviar (para celular o conexiones lentas)
   const compressImageInBrowser = async (file: File): Promise<Blob | File> => {
@@ -171,6 +195,35 @@ export default function ProductForm({
     setImages((prev) => prev.filter((_, idx) => idx !== index));
   };
 
+  const handleVideoUpload = async (e: React.ChangeEvent<HTMLInputElement>) => {
+    if (!e.target.files || e.target.files.length === 0) return;
+    const file = e.target.files[0];
+    setVideoUploading(true);
+    setError('');
+
+    try {
+      const formData = new FormData();
+      formData.append('file', file);
+
+      const res = await fetch('/api/admin/upload', {
+        method: 'POST',
+        body: formData,
+      });
+
+      const data = await res.json();
+      if (res.ok && data.success) {
+        setVideoUrl(data.url);
+      } else {
+        setError(data.error || 'Error al subir el video');
+      }
+    } catch {
+      setError('Error al conectar con el servidor para subir video');
+    } finally {
+      setVideoUploading(false);
+      e.target.value = '';
+    }
+  };
+
   const handleSubmit = async (targetStatus: 'AVAILABLE' | 'DRAFT') => {
     setError('');
 
@@ -186,7 +239,7 @@ export default function ProductForm({
     if (type !== 'GIFT') {
       const parsed = parseInt(priceCop, 10);
       if (isNaN(parsed) || parsed <= 0) {
-        setError('Para artículos en venta, el precio debe ser mayor a 0');
+        setError('Para artículos en venta o servicios, el precio debe ser mayor a 0');
         return;
       }
     }
@@ -215,6 +268,8 @@ export default function ProductForm({
       stock: parsedStock,
       acceptsOffers: type === 'GIFT' ? false : acceptsOffers,
       deliveryArea: deliveryArea.trim(),
+      videoUrl: videoUrl.trim() || null,
+      allowWompiPayment: type === 'DIGITAL' ? Boolean(allowWompiPayment) : true,
       status: parsedStock === 0 ? 'SOLD' : (isEdit ? productStatus : targetStatus),
       images: images.map((img) => ({
         storagePath: img.storagePath,
@@ -275,11 +330,14 @@ export default function ProductForm({
           <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-2">
             Tipo de Publicación *
           </label>
-          <div className="grid grid-cols-3 gap-2">
+          <div className="grid grid-cols-2 sm:grid-cols-4 gap-2">
             <button
               type="button"
-              onClick={() => setType('NEW')}
-              className={`min-h-[56px] rounded-2xl font-black text-base flex flex-col items-center justify-center p-2 transition border-2 ${
+              onClick={() => {
+                setType('NEW');
+                if (deliveryArea.includes('Digital')) setDeliveryArea(defaultDeliveryArea);
+              }}
+              className={`min-h-[56px] rounded-2xl font-black text-sm sm:text-base flex flex-col items-center justify-center p-2 transition border-2 ${
                 type === 'NEW'
                   ? 'bg-emerald-600 text-white border-emerald-700 shadow-sm'
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -291,8 +349,11 @@ export default function ProductForm({
 
             <button
               type="button"
-              onClick={() => setType('USED')}
-              className={`min-h-[56px] rounded-2xl font-black text-base flex flex-col items-center justify-center p-2 transition border-2 ${
+              onClick={() => {
+                setType('USED');
+                if (deliveryArea.includes('Digital')) setDeliveryArea(defaultDeliveryArea);
+              }}
+              className={`min-h-[56px] rounded-2xl font-black text-sm sm:text-base flex flex-col items-center justify-center p-2 transition border-2 ${
                 type === 'USED'
                   ? 'bg-blue-600 text-white border-blue-700 shadow-sm'
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -304,8 +365,30 @@ export default function ProductForm({
 
             <button
               type="button"
-              onClick={() => setType('GIFT')}
-              className={`min-h-[56px] rounded-2xl font-black text-base flex flex-col items-center justify-center p-2 transition border-2 ${
+              onClick={() => {
+                setType('DIGITAL');
+                if (category === 'Otros') setCategory('Servicios Digitales');
+                if (!deliveryArea || deliveryArea === 'Bogotá, Colombia') {
+                  setDeliveryArea('Cartagena de Indias (y Digital / Remoto)');
+                }
+              }}
+              className={`min-h-[56px] rounded-2xl font-black text-sm sm:text-base flex flex-col items-center justify-center p-2 transition border-2 ${
+                type === 'DIGITAL'
+                  ? 'bg-indigo-600 text-white border-indigo-700 shadow-sm'
+                  : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
+              }`}
+            >
+              <span className="text-xl">💻</span>
+              <span>DIGITAL</span>
+            </button>
+
+            <button
+              type="button"
+              onClick={() => {
+                setType('GIFT');
+                if (deliveryArea.includes('Digital')) setDeliveryArea(defaultDeliveryArea);
+              }}
+              className={`min-h-[56px] rounded-2xl font-black text-sm sm:text-base flex flex-col items-center justify-center p-2 transition border-2 ${
                 type === 'GIFT'
                   ? 'bg-amber-600 text-white border-amber-700 shadow-sm'
                   : 'bg-slate-50 text-slate-700 border-slate-200 hover:bg-slate-100'
@@ -383,6 +466,53 @@ export default function ProductForm({
           </p>
         </div>
 
+        {/* Video Corto del Producto */}
+        <div className="bg-slate-50 p-4 rounded-2xl border border-slate-200 space-y-2">
+          <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
+            Video Corto del Producto (Opcional)
+          </label>
+          {videoUrl ? (
+            <div className="bg-slate-900 rounded-xl p-3 flex items-center justify-between gap-3 text-white">
+              <div className="flex items-center space-x-2 text-xs truncate">
+                <span className="text-lg">🎥</span>
+                <span className="font-bold text-yellow-300">Video adjunto:</span>
+                <span className="truncate opacity-80">{videoUrl}</span>
+              </div>
+              <button
+                type="button"
+                onClick={() => setVideoUrl('')}
+                className="px-3 py-1 bg-rose-600 hover:bg-rose-700 text-white rounded-lg text-xs font-bold transition shrink-0"
+              >
+                ✕ Quitar
+              </button>
+            </div>
+          ) : (
+            <div className="grid grid-cols-1 sm:grid-cols-2 gap-2">
+              <label className="min-h-[46px] px-3 py-2 bg-white hover:bg-slate-100 border border-slate-300 rounded-xl cursor-pointer flex items-center justify-center space-x-2 text-xs font-bold text-slate-700 transition">
+                <span>🎥</span>
+                <span>{videoUploading ? 'Subiendo video...' : 'Subir video corto (MP4/WebM)'}</span>
+                <input
+                  type="file"
+                  accept="video/mp4,video/webm,video/quicktime"
+                  onChange={handleVideoUpload}
+                  disabled={videoUploading}
+                  className="hidden"
+                />
+              </label>
+              <input
+                type="url"
+                value={videoUrl}
+                onChange={(e) => setVideoUrl(e.target.value)}
+                placeholder="O pega link de YouTube / MP4..."
+                className="min-h-[46px] px-3 py-2 bg-white border border-slate-300 rounded-xl text-xs text-slate-800 placeholder-slate-400 font-medium"
+              />
+            </div>
+          )}
+          <p className="text-[11px] text-slate-400">
+            Sube un video corto (máx 35 MB) o pega un enlace de YouTube o video web. Aparecerá en la galería del producto.
+          </p>
+        </div>
+
         {/* Nombre */}
         <div>
           <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
@@ -403,15 +533,23 @@ export default function ProductForm({
         {/* Categoría e Inventario */}
         <div className="grid grid-cols-1 sm:grid-cols-2 gap-4">
           <div>
-            <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-              Categoría *
-            </label>
+            <div className="flex items-center justify-between mb-1">
+              <label className="block text-xs font-black uppercase tracking-wider text-slate-700">
+                Categoría *
+              </label>
+              <Link
+                href="/admin/ajustes#categorias"
+                className="text-[11px] font-bold text-blue-600 hover:underline"
+              >
+                + Editar Categorías
+              </Link>
+            </div>
             <select
               value={category}
               onChange={(e) => setCategory(e.target.value)}
               className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 bg-white focus:border-green-600 font-medium text-slate-900"
             >
-              {CATEGORIES.map((cat) => (
+              {categoriesList.map((cat) => (
                 <option key={cat} value={cat}>
                   {cat}
                 </option>
@@ -496,12 +634,40 @@ export default function ProductForm({
           </div>
         )}
 
+        {/* Configuración especial para PRODUCTOS DIGITALES / SERVICIOS */}
+        {type === 'DIGITAL' && (
+          <div className="bg-indigo-50 p-4 rounded-2xl border border-indigo-200 space-y-3">
+            <div className="flex items-center space-x-2 text-indigo-900 font-black text-sm">
+              <span>💻</span>
+              <span>Producto Digital o Servicio</span>
+            </div>
+            <label className="flex items-start space-x-3 cursor-pointer select-none bg-white p-3 rounded-xl border border-indigo-200">
+              <input
+                type="checkbox"
+                checked={allowWompiPayment}
+                onChange={(e) => setAllowWompiPayment(e.target.checked)}
+                className="w-5 h-5 text-indigo-600 rounded-sm focus:ring-indigo-500 mt-0.5 shrink-0"
+              />
+              <div>
+                <span className="text-sm font-black text-slate-900 block">
+                  Permitir botón de pago directo con Wompi
+                </span>
+                <span className="text-xs text-slate-600 leading-tight block mt-0.5">
+                  {allowWompiPayment
+                    ? '✓ El cliente podrá pagar de inmediato online con Wompi.'
+                    : '✕ Recomendado por defecto: El cliente te contactará primero a WhatsApp para cotizar y acordar los detalles antes de pagar.'}
+                </span>
+              </div>
+            </label>
+          </div>
+        )}
+
         {/* Precio en COP */}
         {type !== 'GIFT' ? (
           <div className="space-y-3">
             <div>
               <label className="block text-xs font-black uppercase tracking-wider text-slate-700 mb-1">
-                Precio en Pesos Colombianos (COP) *
+                {type === 'DIGITAL' ? 'Precio o Tarifa Base en COP *' : 'Precio en Pesos Colombianos (COP) *'}
               </label>
               <div className="relative flex items-center">
                 <span className="absolute left-4 font-bold text-slate-500">$</span>
@@ -526,7 +692,7 @@ export default function ProductForm({
                 className="w-5 h-5 text-green-600 rounded-sm focus:ring-green-500"
               />
               <span className="text-sm font-bold text-slate-800">
-                Acepto ofertas razonables para este artículo
+                Acepto ofertas o tarifas personalizadas para este servicio
               </span>
             </label>
           </div>
@@ -546,7 +712,7 @@ export default function ProductForm({
             type="text"
             value={deliveryArea}
             onChange={(e) => setDeliveryArea(e.target.value)}
-            placeholder="Ej. Bogotá (Zona Norte) o entrega a coordinar"
+            placeholder="Ej. Cartagena de Indias o Entrega Digital / Remoto"
             className="w-full min-h-[48px] px-4 rounded-xl border border-slate-300 focus:border-green-600 font-medium text-slate-900 text-sm"
           />
         </div>

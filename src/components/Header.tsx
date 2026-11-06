@@ -43,6 +43,13 @@ export default function Header({
             <span>Usados</span>
           </Link>
           <Link
+            href="/digitales"
+            className="px-3 py-1.5 rounded-full hover:bg-black/5 transition flex items-center space-x-1"
+          >
+            <span>💻</span>
+            <span>Digitales</span>
+          </Link>
+          <Link
             href="/gratis"
             className="px-3 py-1.5 rounded-full hover:bg-black/5 transition flex items-center space-x-1"
           >

@@ -26,6 +26,8 @@ export async function POST(req: NextRequest) {
       acceptsOffers,
       status = 'AVAILABLE',
       deliveryArea,
+      videoUrl,
+      allowWompiPayment,
       images = [],
     } = data;
 
@@ -36,8 +38,8 @@ export async function POST(req: NextRequest) {
     if (title.length > 90) {
       return NextResponse.json({ success: false, error: 'El nombre no puede exceder 90 caracteres' }, { status: 400 });
     }
-    if (!['NEW', 'USED', 'GIFT'].includes(type)) {
-      return NextResponse.json({ success: false, error: 'Tipo inválido' }, { status: 400 });
+    if (!['NEW', 'USED', 'GIFT', 'DIGITAL'].includes(type)) {
+      return NextResponse.json({ success: false, error: 'Tipo de publicación inválido' }, { status: 400 });
     }
 
     let finalPriceCop: number | null = null;
@@ -50,7 +52,7 @@ export async function POST(req: NextRequest) {
       const parsedPrice = parseInt(priceCop, 10);
       if (isNaN(parsedPrice) || parsedPrice <= 0) {
         return NextResponse.json(
-          { success: false, error: 'Para publicar una venta se requiere un precio mayor que cero' },
+          { success: false, error: 'Para publicar una venta o servicio se requiere un precio mayor que cero' },
           { status: 400 }
         );
       }
@@ -87,6 +89,10 @@ export async function POST(req: NextRequest) {
       finalStatus = 'SOLD';
     }
 
+    // Regla de Wompi: Para digitales es falso por defecto salvo que el admin lo habilite explícitamente
+    const finalAllowWompiPayment = type === 'DIGITAL' ? Boolean(allowWompiPayment) : (allowWompiPayment ?? true);
+    const finalVideoUrl = videoUrl && typeof videoUrl === 'string' && videoUrl.trim().length > 0 ? videoUrl.trim() : null;
+
     const uniqueSlug = slugify(title);
     const productId = `prod-${Date.now()}`;
 
@@ -103,7 +109,9 @@ export async function POST(req: NextRequest) {
       stock: parsedStock,
       acceptsOffers: finalAcceptsOffers,
       status: finalStatus,
-      deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+      deliveryArea: deliveryArea ? deliveryArea.trim() : (type === 'DIGITAL' ? 'Entrega Digital / Online' : 'Cartagena de Indias'),
+      videoUrl: finalVideoUrl,
+      allowWompiPayment: finalAllowWompiPayment,
       createdAt: new Date().toISOString(),
       updatedAt: new Date().toISOString(),
       images: images.map((img: { storagePath: string; altText?: string }, index: number) => ({
@@ -118,14 +126,19 @@ export async function POST(req: NextRequest) {
     // Intentar guardar en PostgreSQL
     let createdInDb = false;
     try {
-      // Si la columna stock no existía, intentar auto-migrar de forma transparente
+      // Auto-migración segura de columnas y enum
       try {
-        await prisma.$executeRawUnsafe(
-          'ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "stock" INTEGER NOT NULL DEFAULT 1;'
-        );
-      } catch {
-        // Ignorar si ya existe o no se tienen permisos DDL
-      }
+        await prisma.$executeRawUnsafe('ALTER TYPE "ProductType" ADD VALUE IF NOT EXISTS \'DIGITAL\';');
+      } catch {}
+      try {
+        await prisma.$executeRawUnsafe('ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "stock" INTEGER NOT NULL DEFAULT 1;');
+      } catch {}
+      try {
+        await prisma.$executeRawUnsafe('ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "videoUrl" TEXT;');
+      } catch {}
+      try {
+        await prisma.$executeRawUnsafe('ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "allowWompiPayment" BOOLEAN DEFAULT true;');
+      } catch {}
 
       await prisma.product.create({
         data: {
@@ -140,7 +153,9 @@ export async function POST(req: NextRequest) {
           stock: parsedStock,
           acceptsOffers: finalAcceptsOffers,
           status: finalStatus,
-          deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+          deliveryArea: deliveryArea ? deliveryArea.trim() : (type === 'DIGITAL' ? 'Entrega Digital / Online' : 'Cartagena de Indias'),
+          videoUrl: finalVideoUrl,
+          allowWompiPayment: finalAllowWompiPayment,
           images: {
             create: images.map((img: { storagePath: string; altText?: string }, index: number) => ({
               storagePath: img.storagePath,

@@ -1,13 +1,12 @@
-import SafeImage from '@/components/SafeImage';
 import Link from 'next/link';
 import { notFound } from 'next/navigation';
 import { Metadata } from 'next';
 import { getProductBySlug, getStoreSettings } from '@/lib/db';
 import { formatCop, getShortCode } from '@/lib/format';
-import { ProductStatusBadge, ProductTypeBadge } from '@/components/ProductStatusBadge';
 import WhatsAppButton from '@/components/WhatsAppButton';
 import ShareButton from '@/components/ShareButton';
 import WompiPayButton from '@/components/WompiPayButton';
+import ProductGallery from '@/components/ProductGallery';
 
 export const dynamic = 'force-dynamic';
 
@@ -88,65 +87,15 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
 
       {/* Contenedor Principal Estilo Mercado Libre (2 columnas en PC) */}
       <div className="grid grid-cols-1 md:grid-cols-2 gap-6 items-start">
-        {/* Columna Izquierda: Galería / Fotos grandes */}
-        <div className="space-y-3 bg-white p-4 rounded-3xl border border-slate-200 shadow-xs">
-          <div className="relative aspect-square w-full bg-white rounded-2xl overflow-hidden border border-slate-100 flex items-center justify-center">
-            <SafeImage
-              src={product.images?.[0]?.storagePath || '/placeholder.svg'}
-              alt={product.images?.[0]?.altText || product.title}
-              fill
-              className="object-contain p-2"
-            />
-
-            {/* Badges superiores */}
-            <div className="absolute top-3 left-3 flex flex-wrap gap-1.5 z-10">
-              <ProductTypeBadge type={product.type} condition={product.condition} />
-            </div>
-            <div className="absolute top-3 right-3 z-10">
-              <ProductStatusBadge status={product.status} />
-            </div>
-
-            {/* Overlay si no está disponible */}
-            {!isAvailable && (
-              <div className="absolute inset-0 bg-slate-950/50 backdrop-blur-[2px] flex items-center justify-center p-4 z-10">
-                <div className="bg-white rounded-2xl p-4 text-center shadow-2xl max-w-xs">
-                  <span className="text-3xl block mb-1">
-                    {product.status === 'RESERVED' && '⏳'}
-                    {product.status === 'SOLD' && '✓'}
-                    {product.status === 'GIVEN_AWAY' && '🎁'}
-                  </span>
-                  <p className="text-lg font-black text-slate-900 uppercase">
-                    {product.status === 'RESERVED' && 'Artículo Reservado'}
-                    {product.status === 'SOLD' && 'Artículo Vendido'}
-                    {product.status === 'GIVEN_AWAY' && 'Regalo Entregado'}
-                  </p>
-                  <p className="text-xs text-slate-500 mt-1">
-                    Este artículo ya no está disponible para contactar ni comprar.
-                  </p>
-                </div>
-              </div>
-            )}
-          </div>
-
-          {/* Miniaturas si hay más fotos */}
-          {product.images && product.images.length > 1 && (
-            <div className="flex gap-2 overflow-x-auto pb-1 pt-1">
-              {product.images.map((img, idx) => (
-                <div
-                  key={img.id || idx}
-                  className="relative w-20 h-20 rounded-xl overflow-hidden bg-white border border-slate-200 shrink-0 p-1"
-                >
-                  <SafeImage
-                    src={img.storagePath}
-                    alt={img.altText || `${product.title} foto ${idx + 1}`}
-                    fill
-                    className="object-contain"
-                  />
-                </div>
-              ))}
-            </div>
-          )}
-        </div>
+        {/* Columna Izquierda: Galería Interactiva con Fotos y Video */}
+        <ProductGallery
+          images={product.images || []}
+          title={product.title}
+          type={product.type}
+          condition={product.condition}
+          status={product.status}
+          videoUrl={product.videoUrl}
+        />
 
         {/* Columna Derecha: Cabecera del Producto, Precio y Compra */}
         <div className="bg-white rounded-3xl p-6 border border-slate-200 shadow-xs space-y-4">
@@ -222,8 +171,21 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
 
           {/* ACCIONES PRINCIPALES: WHATSAPP Y WOMPI */}
           <div className="pt-4 border-t border-slate-100 space-y-4">
-            {/* Si es artículo en venta y está disponible, mostrar botón directo de Wompi */}
-            {!isGift && isAvailable && (
+            {/* Si es producto digital y Wompi no está habilitado, explicar que se acuerda primero por WhatsApp */}
+            {product.type === 'DIGITAL' && !product.allowWompiPayment && isAvailable && (
+              <div className="bg-blue-50 border border-blue-200 rounded-2xl p-3.5 text-blue-950 space-y-1">
+                <div className="flex items-center space-x-2 font-bold text-blue-900 text-sm">
+                  <span>💡</span>
+                  <span>Cotización y acuerdo previo por WhatsApp</span>
+                </div>
+                <p className="text-xs text-blue-800 leading-relaxed">
+                  Para este servicio digital, primero conversamos y acordamos el alcance y requerimientos exactos antes de generar el pago.
+                </p>
+              </div>
+            )}
+
+            {/* Botón de pago directo Wompi: solo si no es regalo, está disponible y permitido */}
+            {!isGift && isAvailable && (product.type !== 'DIGITAL' ? (product.allowWompiPayment !== false) : Boolean(product.allowWompiPayment)) && (
               <div className="pb-2 border-b border-slate-100">
                 <WompiPayButton product={product} />
               </div>
@@ -253,7 +215,9 @@ export default async function ProductDetailPage({ params, searchParams }: Produc
             />
 
             <p className="text-xs text-center text-slate-400 pt-2">
-              Puedes pagar directamente por Wompi o escribirme a WhatsApp para coordinar la entrega.
+              {product.type === 'DIGITAL' && !product.allowWompiPayment
+                ? 'Escríbeme a WhatsApp para cotizar y comenzar de inmediato con tu proyecto.'
+                : 'Puedes pagar directamente por Wompi o escribirme a WhatsApp para coordinar la entrega.'}
             </p>
           </div>
         </div>

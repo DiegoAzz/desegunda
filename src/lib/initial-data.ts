@@ -5,7 +5,7 @@ export const INITIAL_STORE_SETTINGS: StoreSettingsItem = {
   storeName: 'DE SEGUNDA',
   tagline: 'Cosas buenas para alguien más.',
   whatsappNumber: '573137751715',
-  defaultDeliveryArea: 'Bogotá, Colombia (Zona Norte / Chapinero)',
+  defaultDeliveryArea: 'Cartagena de Indias',
   logoPath: null,
 };
 

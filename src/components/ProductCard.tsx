@@ -30,6 +30,11 @@ export default function ProductCard({ product }: ProductCardProps) {
         {/* Badges superiores flotantes */}
         <div className="absolute top-2.5 left-2.5 flex flex-wrap gap-1 z-10">
           <ProductTypeBadge type={product.type} condition={product.condition} />
+          {product.videoUrl && (
+            <span className="inline-flex items-center px-1.5 py-0.5 rounded-full text-[10px] font-black bg-slate-900/90 text-yellow-300 shadow-xs">
+              🎥 Video
+            </span>
+          )}
         </div>
 
         <div className="absolute top-2.5 right-2.5 z-10">

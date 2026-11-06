@@ -38,6 +38,13 @@ export default function DesktopSidebar() {
       active: pathname === '/usados',
     },
     {
+      id: 'digitales',
+      label: 'Servicios Digitales',
+      icon: '💻',
+      href: '/digitales',
+      active: pathname === '/digitales',
+    },
+    {
       id: 'gratis',
       label: 'Regalos (Gratis)',
       icon: '🎁',

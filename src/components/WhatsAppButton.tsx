@@ -43,6 +43,9 @@ export default function WhatsAppButton({
   if (product.type === 'GIFT' || action === 'gift') {
     buttonText = 'QUIERO ESTE REGALO';
     bgClasses = 'bg-amber-600 hover:bg-amber-700 text-white shadow-lg shadow-amber-600/20';
+  } else if (product.type === 'DIGITAL') {
+    buttonText = 'COTIZAR / CONSULTAR';
+    bgClasses = 'bg-indigo-600 hover:bg-indigo-700 text-white shadow-lg shadow-indigo-600/20';
   } else if (action === 'offer') {
     buttonText = 'HACER OFERTA';
     bgClasses = 'bg-emerald-700 hover:bg-emerald-800 text-white shadow-lg shadow-emerald-700/20';

@@ -1,4 +1,4 @@
-export type ProductType = 'NEW' | 'USED' | 'GIFT';
+export type ProductType = 'NEW' | 'USED' | 'GIFT' | 'DIGITAL';
 
 export type ProductCondition = 'GOOD' | 'DETAILS' | 'DAMAGED';
 
@@ -10,17 +10,20 @@ export type ProductStatus =
   | 'GIVEN_AWAY'
   | 'HIDDEN';
 
-export const CATEGORIES = [
+export const DEFAULT_CATEGORIES = [
   'Tecnología',
   'Electrodomésticos',
   'Hogar',
   'Muebles',
   'Ropa',
   'Herramientas',
+  'Servicios Digitales',
   'Otros',
 ] as const;
 
-export type Category = (typeof CATEGORIES)[number];
+export const CATEGORIES = DEFAULT_CATEGORIES;
+
+export type Category = string;
 
 export interface ProductImageItem {
   id: string;
@@ -44,6 +47,8 @@ export interface ProductItem {
   acceptsOffers: boolean;
   status: ProductStatus;
   deliveryArea: string | null;
+  videoUrl?: string | null;
+  allowWompiPayment?: boolean;
   createdAt: Date | string;
   updatedAt: Date | string;
   images: ProductImageItem[];

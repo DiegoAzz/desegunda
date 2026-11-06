@@ -46,6 +46,10 @@ export function buildWhatsAppUrl({
   if (product.type === 'GIFT' || action === 'gift') {
     // Regalo: Hola, vi el regalo «{nombre}» (código {codigo}) en LO TENGO. ¿Todavía está disponible? {url}
     message = `Hola, vi el regalo «${product.title}» (código ${codigo}) en LO TENGO. ¿Todavía está disponible? ${productUrl}`;
+  } else if (product.type === 'DIGITAL') {
+    // Producto digital / Servicio
+    const precio = product.priceCop ? ` (${formatCop(product.priceCop)})` : '';
+    message = `Hola, me interesa el servicio/producto digital «${product.title}» (código ${codigo})${precio} en LO TENGO. Me gustaría cotizarlo y acordar los detalles. ${productUrl}`;
   } else if (action === 'offer') {
     // Oferta: Hola, vi «{nombre}» (código {codigo}) en LO TENGO. Quiero hacer una oferta. {url}
     message = `Hola, vi «${product.title}» (código ${codigo}) en LO TENGO. Quiero hacer una oferta. ${productUrl}`;

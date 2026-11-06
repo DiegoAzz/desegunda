@@ -53,6 +53,8 @@ export async function PUT(
       acceptsOffers,
       status,
       deliveryArea,
+      videoUrl,
+      allowWompiPayment,
       images = [],
     } = data;
 
@@ -100,6 +102,9 @@ export async function PUT(
       finalStatus = 'SOLD';
     }
 
+    const finalAllowWompiPayment = type === 'DIGITAL' ? Boolean(allowWompiPayment) : (allowWompiPayment ?? true);
+    const finalVideoUrl = videoUrl && typeof videoUrl === 'string' && videoUrl.trim().length > 0 ? videoUrl.trim() : null;
+
     // 1. Buscar el producto por id o slug
     let existing: any = null;
     try {
@@ -114,6 +119,16 @@ export async function PUT(
 
     // Actualizar producto e imágenes en PostgreSQL
     try {
+      try {
+        await prisma.$executeRawUnsafe('ALTER TYPE "ProductType" ADD VALUE IF NOT EXISTS \'DIGITAL\';');
+      } catch {}
+      try {
+        await prisma.$executeRawUnsafe('ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "videoUrl" TEXT;');
+      } catch {}
+      try {
+        await prisma.$executeRawUnsafe('ALTER TABLE "Product" ADD COLUMN IF NOT EXISTS "allowWompiPayment" BOOLEAN DEFAULT true;');
+      } catch {}
+
       await prisma.$transaction(async (tx) => {
         await tx.product.upsert({
           where: { id: targetDbId },
@@ -129,6 +144,8 @@ export async function PUT(
             acceptsOffers: finalAcceptsOffers,
             status: finalStatus,
             deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+            videoUrl: finalVideoUrl,
+            allowWompiPayment: finalAllowWompiPayment,
           },
           create: {
             id: targetDbId,
@@ -144,6 +161,8 @@ export async function PUT(
             acceptsOffers: finalAcceptsOffers,
             status: finalStatus,
             deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+            videoUrl: finalVideoUrl,
+            allowWompiPayment: finalAllowWompiPayment,
           },
         });
 
@@ -178,6 +197,8 @@ export async function PUT(
       acceptsOffers: finalAcceptsOffers,
       status: finalStatus,
       deliveryArea: deliveryArea ? deliveryArea.trim() : null,
+      videoUrl: finalVideoUrl,
+      allowWompiPayment: finalAllowWompiPayment,
       updatedAt: new Date().toISOString(),
       images: images.map((img: any, idx: number) => ({
         id: `img-${targetDbId}-${idx}`,

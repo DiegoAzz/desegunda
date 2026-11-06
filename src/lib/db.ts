@@ -47,6 +47,64 @@ export function loadLocalCustomProducts(): ProductItem[] {
   return [];
 }
 
+export function loadCustomCategories(): string[] {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      const filePath = path.join(dir, 'custom_categories.json');
+      if (fs.existsSync(filePath)) {
+        try {
+          const data = JSON.parse(fs.readFileSync(filePath, 'utf-8'));
+          if (Array.isArray(data) && data.length > 0) {
+            return data;
+          }
+        } catch {}
+      }
+    }
+  } catch {}
+  return [
+    'Tecnología',
+    'Electrodomésticos',
+    'Hogar',
+    'Muebles',
+    'Ropa',
+    'Herramientas',
+    'Servicios Digitales',
+    'Otros',
+  ];
+}
+
+export function saveCustomCategories(categories: string[]) {
+  try {
+    const candidateDirs = [
+      process.env.UPLOAD_DIR,
+      path.join(process.cwd(), 'public', 'uploads'),
+      path.join(process.cwd(), 'uploads'),
+      '/app/uploads',
+      path.join(os.tmpdir(), 'lotengo_uploads'),
+    ].filter(Boolean) as string[];
+
+    for (const dir of candidateDirs) {
+      try {
+        if (!fs.existsSync(dir)) {
+          fs.mkdirSync(dir, { recursive: true });
+        }
+        const filePath = path.join(dir, 'custom_categories.json');
+        fs.writeFileSync(filePath, JSON.stringify(categories, null, 2), 'utf-8');
+      } catch {}
+    }
+  } catch (err) {
+    console.error('Error guardando categorías locales:', err);
+  }
+}
+
 export function saveProductToLocalFile(product: any) {
   try {
     const candidateDirs = [
@@ -319,7 +377,7 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
     });
 
     if (items && items.length > 0) {
-      dbProducts = items.map((p) => ({
+      dbProducts = items.map((p: any) => ({
         id: p.id,
         slug: p.slug,
         title: p.title,
@@ -333,9 +391,11 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
         acceptsOffers: p.acceptsOffers,
         status: p.status as any,
         deliveryArea: p.deliveryArea,
+        videoUrl: p.videoUrl || null,
+        allowWompiPayment: p.allowWompiPayment ?? (p.type !== 'DIGITAL'),
         createdAt: p.createdAt,
         updatedAt: p.updatedAt,
-        images: p.images.map((img) => ({
+        images: p.images.map((img: any) => ({
           id: img.id,
           productId: img.productId,
           storagePath: img.storagePath,
@@ -428,22 +488,24 @@ export async function getProductBySlug(slug: string): Promise<ProductItem | null
         return null;
       }
       return {
-        id: item.id,
-        slug: item.slug,
-        title: item.title,
-        description: item.description,
-        type: item.type as ProductType,
-        category: item.category,
-        condition: item.condition as any,
-        damageDetails: item.damageDetails,
-        priceCop: item.priceCop,
-        stock: item.stock ?? 1,
-        acceptsOffers: item.acceptsOffers,
-        status: item.status as any,
-        deliveryArea: item.deliveryArea,
-        createdAt: item.createdAt,
-        updatedAt: item.updatedAt,
-        images: item.images.map((img) => ({
+        id: (item as any).id,
+        slug: (item as any).slug,
+        title: (item as any).title,
+        description: (item as any).description,
+        type: (item as any).type as ProductType,
+        category: (item as any).category,
+        condition: (item as any).condition as any,
+        damageDetails: (item as any).damageDetails,
+        priceCop: (item as any).priceCop,
+        stock: (item as any).stock ?? 1,
+        acceptsOffers: (item as any).acceptsOffers,
+        status: (item as any).status as any,
+        deliveryArea: (item as any).deliveryArea,
+        videoUrl: (item as any).videoUrl || null,
+        allowWompiPayment: (item as any).allowWompiPayment ?? ((item as any).type !== 'DIGITAL'),
+        createdAt: (item as any).createdAt,
+        updatedAt: (item as any).updatedAt,
+        images: (item as any).images.map((img: any) => ({
           id: img.id,
           productId: img.productId,
           storagePath: img.storagePath,
