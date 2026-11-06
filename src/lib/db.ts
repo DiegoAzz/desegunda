@@ -410,16 +410,25 @@ export async function getProducts(filter: GetProductsFilter = {}): Promise<Produ
 
   const deletedIds = loadDeletedProductIds();
 
-  // Mapear combinando PostgreSQL y catálogo local sin duplicados
+  // Mapear combinando Catálogo Base Persistente, PostgreSQL y catálogo local sin duplicados
   const productMap = new Map<string, ProductItem>();
+
+  // 1. Productos base permanentes
+  for (const p of INITIAL_PRODUCTS) {
+    productMap.set(p.id, p);
+    if (p.slug) productMap.set(p.slug, p);
+  }
+
+  // 2. Base de datos PostgreSQL
   for (const p of dbProducts) {
     productMap.set(p.id, p);
     if (p.slug) productMap.set(p.slug, p);
   }
+
+  // 3. Modificaciones y nuevos productos locales
   for (const p of localCustom) {
-    if (!productMap.has(p.id) && !productMap.has(p.slug)) {
-      productMap.set(p.id, p);
-    }
+    productMap.set(p.id, p);
+    if (p.slug) productMap.set(p.slug, p);
   }
 
   let list = Array.from(new Set(productMap.values()));
@@ -516,6 +525,12 @@ export async function getProductBySlug(slug: string): Promise<ProductItem | null
     }
   } catch {
     // Continuar si falla PostgreSQL
+  }
+
+  // 3. Fallback a catálogo base permanente si no ha sido eliminado
+  const fromInitial = INITIAL_PRODUCTS.find((p) => p.slug === slug || p.id === slug);
+  if (fromInitial && !deletedIds.includes(fromInitial.id) && !deletedIds.includes(fromInitial.slug)) {
+    return fromInitial;
   }
 
   return null;
