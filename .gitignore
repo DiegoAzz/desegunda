@@ -18,10 +18,12 @@ out/
 prisma/*.db
 prisma/*.db-journal
 
-# Uploads directory in local dev
-public/uploads/*
-!public/uploads/.gitkeep
-uploads/
+# Root uploads folder
+/uploads/
+# Uploads directory in local dev (ignore json data and temporary temp files, but preserve default images)
+public/uploads/*.json
+public/uploads/temp_*
+public/uploads/*.tmp
 
 # Debug logs
 npm-debug.log*
